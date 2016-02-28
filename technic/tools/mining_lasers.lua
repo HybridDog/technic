@@ -32,6 +32,58 @@ minetest.register_craft({
 	}
 })
 
+--[[ precise rayIter for laser
+local scalar = vector.scalar or vector.dot or function vector.scalar(v1, v2)
+	return v1.x*v2.x + v1.y*v2.y + v1.z*v2.z
+end
+
+local function biggest_of_vec(vec)
+	if vec.x < vec.y then
+		if vec.y < vec.z then
+			return "z"
+		end
+		return "y"
+	end
+	if vec.x < vec.z then
+		return "z"
+	end
+	return "x"
+end
+
+local function rayIter(pos, dir, range)
+	-- make a table of possible movements
+	local step = {}
+	for i in pairs(pos) do
+		local v = math.sign(dir[i])
+		if v ~= 0 then
+			step[i] = v
+		end
+	end
+
+	local p
+	return function()
+		if not p then
+			-- avoid skipping the first position
+			p = vector.round(pos)
+			return vector.new(p)
+		end
+
+		-- find the position which has the smallest distance to the line
+		local choose = {}
+		local choosefit = vector.new()
+		for i in pairs(step) do
+			choose[i] = vector.new(p)
+			choose[i][i] = choose[i][i] + step[i]
+			choosefit[i] = scalar(vector.normalize(vector.subtract(choose[i], pos)), dir)
+		end
+		p = choose[biggest_of_vec(choosefit)]
+
+		if vector.distance(pos, p) <= range then
+			return vector.new(p)
+		end
+	end
+end--]]
+
 local function laser_node(pos, node, player)
 	local def = minetest.registered_nodes[node.name]
 	if def and def.liquidtype ~= "none" then
@@ -61,9 +113,9 @@ local function laser_shoot(player, range, particle_texture, sound)
 
 	local start_pos = vector.new(player_pos)
 	-- Adjust to head height
-	start_pos.y = start_pos.y + 1.6
+	start_pos.y = start_pos.y + 1.625
 	minetest.add_particle({
-		pos = startpos,
+		pos = start_pos,
 		velocity = dir,
 		acceleration = vector.multiply(dir, 50),
 		expirationtime = range / 11,
