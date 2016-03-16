@@ -1,4 +1,3 @@
-
 local S = technic.getter
 
 local cable_tier = {}
@@ -14,7 +13,7 @@ end
 local function check_connections(pos)
 	-- Build a table of all machines
 	local machines = {}
-	for tier,list in pairs(technic.machines) do
+	for _,list in pairs(technic.machines) do
 		for k,v in pairs(list) do
 			machines[k] = v
 		end
@@ -117,36 +116,43 @@ local function clear_networks(pos)
 	end
 end
 
+local boxes = {}
+local function get_nodebox(size)
+	boxes[size] = boxes[size] or {
+		type = "connected",
+		fixed = {-size, -size, -size, size,  size, size},
+		connect_top = {-size, -size, -size, size,  0.5,  size},
+		connect_bottom = {-size, -0.5,  -size, size,  size, size},
+		connect_front = {-size, -size, -0.5,  size,  size, size},
+		connect_left = {-0.5,  -size, -size, size,  size, size},
+		connect_back = {-size, -size,  size, size,  size, 0.5},
+		connect_right = {-size, -size, -size, 0.5,   size, size},
+	}
+	return boxes[size]
+end
+
 function technic.register_cable(tier, size)
 	local ltier = string.lower(tier)
-	cable_tier["technic:"..ltier.."_cable"] = tier
+
+	local nodename = "technic:"..ltier.."_cable"
+
+	cable_tier[nodename] = tier
 
 	local groups = {snappy=2, choppy=2, oddly_breakable_by_hand=2,
 			["technic_"..ltier.."_cable"] = 1}
+	local nodebox = get_nodebox(size)
 
-	local node_box = {
-		type = "connected",
-		fixed          = {-size, -size, -size, size,  size, size},
-		connect_top    = {-size, -size, -size, size,  0.5,  size}, -- y+
-		connect_bottom = {-size, -0.5,  -size, size,  size, size}, -- y-
-		connect_front  = {-size, -size, -0.5,  size,  size, size}, -- z-
-		connect_back   = {-size, -size,  size, size,  size, 0.5 }, -- z+
-		connect_left   = {-0.5,  -size, -size, size,  size, size}, -- x-
-		connect_right  = {-size, -size, -size, 0.5,   size, size}, -- x+
-	}
-
-	minetest.register_node("technic:"..ltier.."_cable", {
+	minetest.register_node(nodename, {
 		description = S("%s Cable"):format(tier),
 		tiles = {"technic_"..ltier.."_cable.png"},
 		inventory_image = "technic_"..ltier.."_cable_wield.png",
 		wield_image = "technic_"..ltier.."_cable_wield.png",
 		groups = groups,
 		sounds = default.node_sound_wood_defaults(),
-		drop = "technic:"..ltier.."_cable",
 		paramtype = "light",
 		sunlight_propagates = true,
 		drawtype = "nodebox",
-		node_box = node_box,
+		node_box = nodebox,
 		connects_to = {"group:technic_"..ltier.."_cable",
 			"group:technic_"..ltier, "group:technic_all_tiers"},
 		on_construct = clear_networks,
@@ -186,7 +192,7 @@ function technic.register_cable(tier, size)
 			paramtype = "light",
 			sunlight_propagates = true,
 			drawtype = "nodebox",
-			node_box = table.copy(node_box),
+			node_box = table.copy(nodebox),
 			connects_to = {"group:technic_"..ltier.."_cable",
 				"group:technic_"..ltier, "group:technic_all_tiers"},
 			on_construct = clear_networks,
@@ -274,7 +280,7 @@ end
 
 
 local function clear_nets_if_machine(pos, node)
-	for tier, machine_list in pairs(technic.machines) do
+	for _, machine_list in pairs(technic.machines) do
 		if machine_list[node.name] ~= nil then
 			return clear_networks(pos)
 		end
