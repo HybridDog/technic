@@ -33,7 +33,7 @@ minetest.register_craft({
 	}
 })
 
---[[ precise rayIter for laser
+-- [[ precise rayIter for mining laser
 local scalar = vector.scalar or vector.dot or function(v1, v2)
 	return v1.x*v2.x + v1.y*v2.y + v1.z*v2.z
 end
