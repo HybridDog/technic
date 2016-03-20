@@ -32,7 +32,7 @@ minetest.register_tool("technic:vacuum", {
 				if inv and inv:room_for_item("main", ItemStack(luaentity.itemstring)) then
 					meta.charge = meta.charge - vacuum_charge_per_object
 					if meta.charge < vacuum_charge_per_object then
-						return
+						break
 					end
 					inv:add_item("main", ItemStack(luaentity.itemstring))
 					minetest.sound_play("item_drop_pickup", {
@@ -44,7 +44,7 @@ minetest.register_tool("technic:vacuum", {
 				end
 			end
 		end
-		
+
 		technic.set_RE_wear(itemstack, meta.charge, vacuum_max_charge)
 		itemstack:set_metadata(minetest.serialize(meta))
 		return itemstack
