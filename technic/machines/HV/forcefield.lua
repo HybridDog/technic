@@ -54,6 +54,8 @@ local function update_forcefield(pos, meta, active, first)
 	local c_air = minetest.get_content_id("air")
 	local c_field = minetest.get_content_id("technic:forcefield")
 
+	local changes
+
 	for z = -range, range do
 	for y = -range, range do
 	local vi = area:index(pos.x + (-range), pos.y + y, pos.z + z)
@@ -72,10 +74,15 @@ local function update_forcefield(pos, meta, active, first)
 		end
 		if relevant then
 			local cid = data[vi]
-			if active and replaceable_cids[cid] then
+			if active
+			and cid ~= c_field
+			and replaceable_cids[cid] then
 				data[vi] = c_field
-			elseif not active and cid == c_field then
+				changes = true
+			elseif not active
+			and cid == c_field then
 				data[vi] = c_air
+				changes = true
 			end
 		end
 		vi = vi + 1
@@ -83,13 +90,10 @@ local function update_forcefield(pos, meta, active, first)
 	end
 	end
 
-	vm:set_data(data)
-	vm:update_liquids()
-	vm:write_to_map()
-	-- update_map is very slow, but if we don't call it we'll
-	-- get phantom blocks on the client.
-	if not active or first then
-		vm:update_map()
+	if changes then
+		vm:set_data(data)
+		vm:update_liquids()
+		vm:write_to_map()
 	end
 end
 
