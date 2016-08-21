@@ -451,28 +451,23 @@ function technic.discharge_tools(meta, batt_charge, charge_step, max_charge)
 	if inv:is_empty("dst") then
 		return batt_charge, false
 	end
-	srcstack = inv:get_stack("dst", 1)
+	local srcstack = inv:get_stack("dst", 1)
 	local toolname = srcstack:get_name()
 	if technic.power_tools[toolname] == nil then
 		return batt_charge, false
 	end
 	-- Set meta data for the tool if it didn't do it itself :-(
-	local src_meta = minetest.deserialize(srcstack:get_metadata())
-	src_meta = src_meta or {}
-	if not src_meta.charge then
-		src_meta.charge = 0
-	end
+	local src_meta = minetest.deserialize(srcstack:get_metadata()) or {}
 
 	-- Do the discharging
 	local item_max_charge = technic.power_tools[toolname]
-	local tool_charge     = src_meta.charge
+	local tool_charge     = src_meta.charge or 0
 	if tool_charge <= 0 then
 		return batt_charge, true
 	elseif batt_charge >= max_charge then
 		return batt_charge, false
 	end
-	charge_step = math.min(charge_step, max_charge - batt_charge)
-	charge_step = math.min(charge_step, tool_charge)
+	charge_step = math.min(math.min(charge_step, max_charge - batt_charge), tool_charge)
 	tool_charge = tool_charge - charge_step
 	batt_charge = batt_charge + charge_step
 	technic.set_RE_wear(srcstack, tool_charge, item_max_charge)
