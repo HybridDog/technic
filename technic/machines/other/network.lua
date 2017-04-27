@@ -40,12 +40,12 @@ end
 
 ------------------------- Network -------------------------------------
 
-local function get_type_from_cable(name)
-	return "LV?"
+local function get_tier_from_cable(name)
+	return name:sub(9, 11):upper()
 end
 
 local function is_cable(name, tier)
-	return name == "technic:cable?" .. tier
+	return name == "technic:" .. tier:lower() .. "_cable"
 end
 
 -- tests whether the node is a technic machine
@@ -54,8 +54,8 @@ local function is_machine(name, tier)
 	if not def.technic then
 		return false
 	end
-	for i = 1,#def.technic.types do
-		if def.technic.types[i] == tier then
+	for i = 1,#def.technic.tiers do
+		if def.technic.tiers[i] == tier then
 			return true
 		end
 	end
@@ -68,6 +68,8 @@ local touchps = {
 	{x=0, y=0, z=1}, {x=0, y=0, z=-1},
 	{x=0, y=1, z=0}, {x=0, y=-1, z=0}
 }
+-- touchnames needs test
+local touchnames = {right=1, left=2, back=3, front=4, top=5, bottom=6}
 local function scan_net(pos, tier)
 	local machines = {}
 	local founds_h = {} -- > 1 cable required
@@ -76,21 +78,37 @@ local function scan_net(pos, tier)
 	while sp > 0 do
 		local p = todo[sp]
 		sp = sp-1
-		for i = 1,6 do
-			local p = vector.add(p, touchps[i])
+		for oi = 1,6 do
+			local p = vector.add(p, touchps[oi])
 			local h = poshash(p)
 			if not founds_h[h] then
-				founds_h[h] = true
 				local node = get_node(p)
 				if is_cable(node.name, tier) then
+					founds_h[h] = true
 					sp = sp+1
 					todo[sp] = p
 				elseif is_machine(node.name, tier) then
-					machines[#machines+1] = {
-						pos = pos,
-						node = node,
-						def = minetest.registered_nodes[node.name]
-					}
+					local def = minetest.registered_nodes[node.name]
+					local connect_sides = def.connect_sides
+					local connected = not connect_sides
+					if not connected then
+						for i = 1,#connect_sides do
+							if touchnames[connect_sides[i]] == oi then
+								connected = true
+								break
+							end
+						end
+					end
+					if connected then
+						founds_h[h] = true
+						machines[#machines+1] = {
+							pos = pos,
+							node = node,
+							def = def
+						}
+					end
+				else
+					founds_h[h] = true
 				end
 			end
 		end
@@ -101,7 +119,7 @@ end
 -- updates the network
 function technic.poll_network(net)
 	local pos = net.startpos
-	local tier = get_type_from_cable(get_node(pos))
+	local tier = get_tier_from_cable(get_node(pos))
 	if not tier then
 		return false
 	end
@@ -149,7 +167,7 @@ function technic.poll_network(net)
 	clean_cache()
 end
 
--- salacious
+
 local function on_switching_update(pos)
 	local meta = minetest.get_meta(pos)
 	local gametime = minetest.get_gametime()
@@ -159,8 +177,9 @@ local function on_switching_update(pos)
 	end
 	local net = {
 		startpos = pos,
+		power_disposable = 0,
 		poll_interval = -1,
-		current_gametime = gametime
+		current_gametime = gametime,
 	}
 	technic.poll_network(net)
 
@@ -169,4 +188,35 @@ local function on_switching_update(pos)
 		net.poll_interval = 9
 	end
 	meta:set_int("technic_next_polling", least_gametime + net.poll_interval)
+end
+
+
+------------------------- node registering -------------------------------------
+
+local idleinfo = S" (Idle)"
+local prodinfo = S" (Producing %s EU/s)"
+
+local register_node = minetest.register_node
+function minetest.register_node(name, def)
+	if not def.technic then
+		return register_node(name, def)
+	end
+	local tech = def.technic
+	if tech.supply then
+		tech.priorities = tech.priorities or {1}
+		function tech.on_poll(net)
+			local machine = net.machine
+			local power = tech.supply(machine.dtime, machine.pos, machine.node,
+				net)
+			local meta = minetest.get_meta(machine.pos)
+			if power > 0 then
+				net.power_disposable = net.power_disposable + power
+				meta:set_string("infotext", tech.machine_description ..
+					prodinfo:format(technic.pretty_num(power * dtime)))
+			else
+				meta:set_string("infotext", tech.machine_description ..
+					idleinfo)
+			end
+		end
+	end
 end
