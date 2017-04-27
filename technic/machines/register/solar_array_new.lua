@@ -6,22 +6,19 @@ function technic.register_solar_array(data)
 	local tier = data.tier
 	local tech = {
 		tiers = {tier},
-		supply = function(dtime, pos, node, net)
+		supply = function(dtime, _, node)
 			local sunlight = get_sunlight(node.param1,
 				minetest.get_timeofday())
 
 			local supply_factor = 0
 
-			-- turn on array only if sufficient light
+			-- produce power only if sufficient light
 			if sunlight >= 12 then
 				supply_factor = math.log(4 - sunlight / 4) / math.log(0.97265)
-				--~ meta:set_string("infotext", S("@1 Active (@2 EU)", machine_name, technic.pretty_num(charge_to_give)))
-				--~ meta:set_string("infotext", S("%s Idle"):format(machine_name))
 			end
 			return data.power * supply_factor * dtime / 72
 		end,
 		machine_description = S"Arrayed Solar %s Generator":format(tier),
-		connect_sides = {"bottom"},
 	}
 
 	local ltier = tier:lower()
@@ -29,19 +26,17 @@ function technic.register_solar_array(data)
 		tiles = {"technic_"..ltier.."_solar_array_top.png",
 			"technic_"..ltier.."_solar_array_bottom.png",
 			"technic_"..ltier.."_solar_array_side.png"},
-		groups = {snappy=2, choppy=2, oddly_breakable_by_hand=2},
 		sounds = default.node_sound_wood_defaults(),
-		description = S("Arrayed Solar %s Generator"):format(tier),
+		description = tech.machine_description,
 		drawtype = "nodebox",
 		paramtype = "light",
 		node_box = {
 			type = "fixed",
 			fixed = {-0.5, -0.5, -0.5, 0.5, 0, 0.5},
 		},
-		on_construct = function(pos)
-			local meta = minetest.get_meta(pos)
-			meta:set_int(tier.."_EU_supply", 0)
-		end,
+		groups = {snappy=2, choppy=2, oddly_breakable_by_hand=2,
+			["technic_"..ltier]=1},
+		connect_sides = {"bottom"},
 		technic = tech,
 	})
 
