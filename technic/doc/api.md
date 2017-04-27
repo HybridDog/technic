@@ -71,12 +71,15 @@ Used itemdef fields
 * `connect_sides`
 	* In addition to the default use (see lua_api.txt), this tells where the
 	  machine can be connected.
-#
-#
-* `technic_run(pos, node)`
+* `technic_run(pos, node, run_stage)`
 	* This function is currently used to update the node.
-	  Modders have to manually change the information about supply etc. in the
-	  node metadata.
+	  Modders have to manually change the information about supply
+	  etc. (see below) in the node metadata.
+	* run_stage is technic.producer, technic.receiver or technic.battery.
+* `technic_on_disable(pos, node)`
+	* Called when the machine looses the network
+* `technic_disabled_machine_name`
+	* If specified, an active machine becomes set to this node when loosing net.
 
 Machine types
 -------------
@@ -116,14 +119,20 @@ down. We have a brown-out situation.
 Hence for now all the power distribution logic resides in this single node.
 
 ### Node meta usage
-Nodes connected to the network will have one or more of these parameters as meta
+Machines connected to the network will have one or more of these fields in meta
 data:
-	* `<LV|MV|HV>_EU_supply` : Exists for PR and BA node types.
+	* `<LV|MV|HV>_EU_supply` : Exists for PR and BA node types
 	This is the EU value supplied by the node. Output
-	* `<LV|MV|HV>_EU_demand` : Exists for RE and BA node types.
+	* `<LV|MV|HV>_EU_demand` : Exists for RE and BA node types
 	This is the EU value the node requires to run. Output
-	* `<LV|MV|HV>_EU_input`  : Exists for RE and BA node types.
+	* `<LV|MV|HV>_EU_input`  : Exists for RE and BA node types
 	This is the actual EU value the network can give the node. Input
+	* `<LV|MV|HV>_EU_timeout`: Used to find disconnected machines
+	0: disconnected, 1: connected, 2: connected (freshly updated); Input
+	* `<LV|MV|HV>_network`   : The serialized position of the switching station
+	Can be e.g. "(1813,36,-257)"; Input
+Input means you can read this data in the machine's run function,
+Output means you can write to the field
 
 The reason the LV|MV|HV type is prepended to meta data is because some machine
 could require several supplies to work.
