@@ -41,8 +41,6 @@ function technic.register_solar_array(data)
 		connect_sides = {"bottom"},
 		technic = tech,
 	})
-
-	technic.register_machine(tier, "technic:solar_array_"..ltier, technic.producer)
 end
 
 
