@@ -6,17 +6,19 @@ function technic.register_solar_array(data)
 	local tier = data.tier
 	local tech = {
 		tiers = {tier},
-		supply = function(dtime, _, node)
+		supply = function(dtime, _, node, net)
 			local sunlight = get_sunlight(node.param1,
 				minetest.get_timeofday())
 
-			local supply_factor = 0
-
 			-- produce power only if sufficient light
 			if sunlight >= 12 then
-				supply_factor = math.log(4 - sunlight / 4) / math.log(0.97265)
+				-- request a polling interval (10 min gametime)
+				net.poll_interval = math.min(net.poll_interval, 600)
+				local supply_factor = math.log(4 - sunlight / 4)
+					/ math.log(0.97265)
+				return data.power * supply_factor * dtime / 72
 			end
-			return data.power * supply_factor * dtime / 72
+
 		end,
 		machine_description = S"Arrayed Solar %s Generator":format(tier),
 	}

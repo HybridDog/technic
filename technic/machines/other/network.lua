@@ -40,18 +40,11 @@ end
 
 ------------------------- Network -------------------------------------
 
-local function get_tier_from_cable(name)
-	return name:sub(9, 11):upper()
-end
-
-local function is_cable(name, tier)
-	return name == "technic:" .. tier:lower() .. "_cable"
-end
-
 -- tests whether the node is a technic machine
 local function is_machine(name, tier)
 	local def = minetest.registered_nodes[name]
-	if not def.technic then
+	if not def.technic
+	or not def.technic.machine then
 		return false
 	end
 	for i = 1,#def.technic.tiers do
@@ -83,7 +76,7 @@ local function scan_net(pos, tier)
 			local h = poshash(p)
 			if not founds_h[h] then
 				local node = get_node(p)
-				if is_cable(node.name, tier) then
+				if technic.is_tier_cable(node.name, tier) then
 					founds_h[h] = true
 					sp = sp+1
 					todo[sp] = p
@@ -116,10 +109,12 @@ local function scan_net(pos, tier)
 	return machines
 end
 
+technic.network = {}
+
 -- updates the network
-function technic.poll_network(net)
+function technic.network.poll(net)
 	local pos = net.startpos
-	local tier = get_tier_from_cable(get_node(pos))
+	local tier = technic.get_cable_tier(get_node(pos).name)
 	if not tier then
 		return false
 	end
@@ -167,6 +162,15 @@ function technic.poll_network(net)
 	clean_cache()
 end
 
+-- returns a network table
+function technic.network.init(startpos, gametime)
+	return {
+		startpos = startpos,
+		power_disposable = 0,
+		poll_interval = 72,  -- 1 second with default time speed
+		current_gametime = gametime or minetest.get_gametime(),
+	}
+end
 
 local function on_switching_update(pos)
 	local meta = minetest.get_meta(pos)
@@ -175,23 +179,19 @@ local function on_switching_update(pos)
 	if gametime < least_gametime then
 		return
 	end
-	local net = {
-		startpos = pos,
-		power_disposable = 0,
-		poll_interval = -1,
-		current_gametime = gametime,
-	}
+	local net = technic.network.init(pos, gametime)
 	technic.poll_network(net)
 
-	-- set the next poll to some value if nothing was specified
-	if net.poll_interval < 0 then
-		net.poll_interval = 9
-	end
 	meta:set_int("technic_next_polling", least_gametime + net.poll_interval)
 end
 
 
 ------------------------- node registering -------------------------------------
+
+local prios = {
+	producer = 1,
+	consumer = 100,
+}
 
 local idleinfo = S" (Idle)"
 local prodinfo = S" (Producing %s EU/s)"
@@ -203,7 +203,8 @@ function minetest.register_node(name, def)
 	end
 	local tech = def.technic
 	if tech.supply then
-		tech.priorities = tech.priorities or {1}
+		tech.machine = true
+		tech.priorities = tech.priorities or {prios.producer}
 		function tech.on_poll(net)
 			local machine = net.machine
 			local power = tech.supply(machine.dtime, machine.pos, machine.node,
