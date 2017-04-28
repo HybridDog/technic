@@ -15,29 +15,9 @@ function technic.register_tier(tier, description)
 	technic.machines[tier] = {}
 end
 
-function technic.register_machine(tier, nodename, machine_type)
-	if not technic.machines[tier] then
-		error"unsupported tier"
-	end
-	technic.machines[tier][nodename] = machine_type
-
-	local groups = minetest.registered_nodes[nodename].groups
-	local groupname = "technic_" .. tier:lower()
-	if groups[groupname]
-	or groups.technic_all_tiers then
-		return
-	end
-
-	minetest.log("deprecated", "[technic] " .. nodename ..
-		" needs to be in the " .. groupname .. " group.")
-	groups[groupname] = 1
-	minetest.override_item(nodename, {groups = groups})
-end
-
 function technic.register_power_tool(craftitem, max_charge)
 	technic.power_tools[craftitem] = max_charge
 end
-
 
 -- Utility functions. Not sure exactly what they do.. water.lua uses the two first.
 function technic.get_RE_item_load(load1, max_load)

@@ -39,3 +39,61 @@ for i = 0, 64 do
 	minetest.register_alias("technic:lv_cable"..i, "technic:lv_cable")
 end
 
+
+------------------------- old machine handling ---------------------------------
+
+
+--~ local fake_meta = {
+	--~ data = {},
+--~ }
+--~ function fake_meta:set_int(key, v)
+	--~ if key:sub(3, 6) == "_EU_" then
+		--~ minetest.log("deprecated", "[technic] meta unused")
+		--~ self.data[key] = v
+	--~ end
+	--~ self.data.meta:set_int(key, v)
+--~ end
+--~ function fake_meta:set_string(key, v)
+	--~ if key == "infotext" then
+		--~ minetest.log("deprecated", "[technic] ignoring infotext adjustment")
+		--~ return
+	--~ end
+	--~ self.data.meta:set_string(key, v)
+--~ end
+--~ local origmt = minetest.get_meta
+--~ local function enable_fake_meta()
+	--~ function minetest.get_meta(pos)
+		--~ local meta = origmt(pos)
+		--~ fake_meta.data.meta = meta
+		--~ setmetatable(fake_meta, {__index = meta})
+		--~ return fake_meta
+	--~ end
+--~ end
+--~ local function disable_fake_meta()
+	--~ minetest.get_meta = origmt
+	--~ fake_meta.data = {}
+--~ end
+
+function technic.register_machine(tier, nodename, machine_type)
+	minetest.log("deprecated",
+		"[technic] technic.register_machine is deprecated now.")
+
+	local def = minetest.registered_nodes[nodename]
+
+	tech = {
+		machine = true,
+		tiers = {tier},
+	}
+	if machine_type == technic.producer then
+		tech.priorities = {1}
+		tech.on_poll = function(net)
+			local machine = net.machine
+			def.technic_run(machine.pos, machine.node)
+			local meta = minetest.get_meta(pos)
+			local power = meta:get_int(net.tier .. "_EU_supply")
+			net.power_disposable = net.power_disposable + power
+			net.poll_interval = math.min(net.poll_interval, 72)
+		end
+		minetest.override_item(nodename, {technic = tech})
+	end
+end
