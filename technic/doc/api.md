@@ -6,8 +6,35 @@ The tier is a string, currently `"LV"`, `"MV"` and `"HV"` are supported.
 
 Network
 -------
-The network is the cable with the connected machine nodes. Currently the
-switching station handles the network activity.
+The network is the cable with the connected machine nodes. It is represented by
+a table passed to `on_poll` and has following fields:
+* `tier`
+	* This string is the tier of the network.
+	  Machines which belong to this tier have their `on_poll` executed.
+	* See `Tiers` for the known values.
+* `current_priority`
+	* The current priority, use this when specifying multiple `priorities`.
+* `power_disposable = 0`
+	* This value represents the power machines, such as watermill, produced.
+* `machine`
+	* This table is information about the current machine in `on_poll`, it
+	  contains following fields:
+		* `dtime`
+			* The time difference from the previous access to the machine
+			* Use it to calculate produced or consumed power
+		* `pos`
+		* `node`
+* `poll_interval = 72`
+	* The poll interval is the time delay until the machines are updated next
+	  again.
+	* The value is in gametime seconds.
+* `current_gametime`
+	* This number is the gametime of when the network polling began.
+* `startpos`
+	* The position of the first detected cable of the network
+* `machines`
+	* This is the table of machines connected to the network.
+You can - and should - change fields of this table if you need to.
 
 Helper functions
 ----------------
@@ -50,10 +77,6 @@ Registration functions
 * `technic.register_power_tool(itemname, max_charge)`
 	* Same as `technic.power_tools[itemname] = max_charge`
 	* This function makes the craftitem `itemname` chargeable.
-* `technic.register_machine(tier, nodename, machine_type)`
-	* Same as `technic.machines[tier][nodename] = machine_type`
-	* Currently this is requisite to make technic recognize your node.
-	* See also `Machine types`
 * `technic.register_tier(tier)`
 	* Same as `technic.machines[tier] = {}`
 	* See also `tiers`
@@ -64,13 +87,38 @@ Registration functions
 
 Used itemdef fields
 -------------------
-* groups:
+* `technic`: (a table)
+	In this table information for technic is stored.
+	* `tiers = {}`
+		* This table contains the tiers the machine belongs to, e.g. `{"LV"}`
+	* `machine_description = ""`
+		* The machine description is currently used for setting the infotext.
+	* `supply = function(dtime, pos, node, net)`
+		* If supply is specified, `priorities` is set to `{1}`, `machine` is set
+		  to `true` and the `on_poll` function is set to call the supply
+		  function.
+		* The return value is the power the machine produced.
+		  The infotext is set according to this value.
+	* `machine = true`
+		* Set this boolean to true to use the node as machine.
+	* `priorities = {}`
+		* In this table, set the priorities (number values) of the machine.
+		* The smaller a priority is, the earlier `on_poll` is executed, so e.g.
+		  pruducers have a small value and consumers have a big one.
+		* If multiple priorities are specified, the on_poll becomes executed
+		  multiple times, e.g. for the battery box to take and give power.
+* `groups`:
 	* `technic_<ltier> = 1` ltier is a tier in small letters; this group makes
 	  the node connect to the cable(s) of the right tier.
-	* `technic_machine = 1` Currently used for
 * `connect_sides`
 	* In addition to the default use (see lua_api.txt), this tells where the
 	  machine can be connected.
+
+
+Legacy
+------
+
+### Used itemdef fields
 * `technic_run(pos, node, run_stage)`
 	* This function is currently used to update the node.
 	  Modders have to manually change the information about supply
@@ -80,18 +128,18 @@ Used itemdef fields
 	* Called when the machine looses the network
 * `technic_disabled_machine_name`
 	* If specified, an active machine becomes set to this node when loosing net.
+* groups:
+	* `technic_machine = 1`
 
-Machine types
--------------
+### Machine types
 There are currently following types:
 * `technic.receiver = "RE"` e.g. grinder
 * `technic.producer = "PR"` e.g. solar panel
 * `technic.producer_receiver = "PR_RE"` supply converter
 * `technic.battery  = "BA"` e.g. LV batbox
 
-Switching Station
------------------
-The switching station is the center of all power distribution on an electric
+### Switching Station
+The switching station was the center of all power distribution on an electric
 network.
 
 The station collects power from sources (PR), distributes it to sinks (RE),
@@ -118,7 +166,7 @@ down. We have a brown-out situation.
 
 Hence for now all the power distribution logic resides in this single node.
 
-### Node meta usage
+#### Node meta usage
 Machines connected to the network will have one or more of these fields in meta
 data:
 	* `<LV|MV|HV>_EU_supply` : Exists for PR and BA node types
@@ -137,3 +185,8 @@ Output means you can write to the field
 The reason the LV|MV|HV type is prepended to meta data is because some machine
 could require several supplies to work.
 This way the supplies are separated per network.
+
+### Registration functions
+* `technic.register_machine(tier, nodename, machine_type)`
+	* Same as `technic.machines[tier][nodename] = machine_type`
+	* See also `Machine types`
