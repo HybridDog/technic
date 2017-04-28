@@ -59,9 +59,45 @@ function technic.register_machine(tier, nodename, machine_type)
 			def.technic_run(machine.pos, machine.node)
 			local meta = minetest.get_meta(pos)
 			local power = meta:get_int(net.tier .. "_EU_supply")
+			power = power * math.max(machine.dtime, 1)
 			net.power_disposable = net.power_disposable + power
 			net.poll_interval = math.min(net.poll_interval, 72)
 		end
 		minetest.override_item(nodename, {technic = tech})
+		return
+	end
+	if machine_type == technic.receiver then
+		tech.machine = true
+		tech.priorities = {25, 100}
+		function tech.on_poll(net)
+			local machine = net.machine
+			if net.current_priority == prios.consumer_wait then
+				local requested_power = minetest.get_meta(machine.pos):get_int(
+					net.tier .. "_EU_demand")
+				machine.requested_power = requested_power
+				net.power_requested = net.power_requested + requested_power
+				return
+			end
+			-- Use the power
+			local available_power = net.power_disposable + net.power_batteries
+			if machine.requested_power < available_power then
+				-- not enough power
+				return
+			end
+			def.technic_run(machine.pos, machine.node)
+			local power = minetest.get_meta(machine.pos):get_int(net.tier ..
+				"_EU_demand")
+			if power > 0 then
+				net.power_disposable = net.power_disposable - power
+				if net.power_disposable < 0 then
+					-- use battery power
+					net.power_batteries = net.power_batteries
+						+ net.power_disposable
+					net.power_disposable = 0
+				end
+			end
+		end
+		minetest.override_item(nodename, {technic = tech})
+		return
 	end
 end

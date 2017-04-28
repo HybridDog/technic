@@ -167,6 +167,7 @@ function technic.network.init(startpos, gametime)
 	return {
 		startpos = startpos,
 		power_disposable = 0,
+		power_requested = 0,
 		poll_interval = 72,  -- 1 second with default time speed
 		current_gametime = gametime or minetest.get_gametime(),
 	}
@@ -190,11 +191,13 @@ end
 
 local prios = {
 	producer = 1,
-	consumer = 100,
+	consumer_wait = 25,
+	consumer_eat = 100,
 }
 
 local idleinfo = S" (Idle)"
 local prodinfo = S" (Producing %s EU/s)"
+local consinfo = S" (Using %s EU/s)"
 
 local register_node = minetest.register_node
 function minetest.register_node(name, def)
@@ -206,6 +209,7 @@ function minetest.register_node(name, def)
 		tech.machine = true
 		tech.priorities = tech.priorities or {prios.producer}
 		function tech.on_poll(net)
+			-- Get the produced power, add it to the network and update infotext
 			local machine = net.machine
 			local power = tech.supply(machine.dtime, machine.pos, machine.node,
 				net)
@@ -214,6 +218,44 @@ function minetest.register_node(name, def)
 				net.power_disposable = net.power_disposable + power
 				meta:set_string("infotext", tech.machine_description ..
 					prodinfo:format(technic.pretty_num(power * dtime)))
+			else
+				meta:set_string("infotext", tech.machine_description ..
+					idleinfo)
+			end
+		end
+	elseif tech.consume then
+		tech.machine = true
+		tech.priorities = {prios.consumer_wait, prios.consumer_eat}
+		function tech.on_poll(net)
+			local machine = net.machine
+			if net.current_priority == prios.consumer_wait then
+				-- Collect information about how much power the machine needs
+				local requested_power = tech.request_power(machine.dtime,
+					machine.pos, machine.node, net)
+				machine.requested_power = requested_power
+				net.power_requested = net.power_requested + requested_power
+				machine.old_dtime = machine.dtime
+				return
+			end
+			-- Use the power
+			local available_power = net.power_disposable + net.power_batteries
+			if machine.requested_power < available_power then
+				-- not enough power
+				return
+			end
+			local power = tech.consume(machine.old_dtime, available_power,
+				machine.pos, machine.node, net)
+			local meta = minetest.get_meta(machine.pos)
+			if power > 0 then
+				net.power_disposable = net.power_disposable - power
+				if net.power_disposable < 0 then
+					-- use battery power
+					net.power_batteries = net.power_batteries
+						+ net.power_disposable
+					net.power_disposable = 0
+				end
+				meta:set_string("infotext", tech.machine_description ..
+					consinfo:format(technic.pretty_num(power * dtime)))
 			else
 				meta:set_string("infotext", tech.machine_description ..
 					idleinfo)
