@@ -120,7 +120,7 @@ function technic.network.poll(net)
 	end
 	local machines = scan_net(pos, tier)
 	net.tier = tier
-	net.machines = machnies
+	net.machines = machines
 	net.current_priority = math.huge
 	while true do
 		-- find the next smaller priority
