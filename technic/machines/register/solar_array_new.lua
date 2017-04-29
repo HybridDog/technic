@@ -6,8 +6,11 @@ function technic.register_solar_array(data)
 	local tier = data.tier
 	local tech = {
 		tiers = {tier},
-		supply = function(dtime, _, node, net)
-			local sunlight = get_sunlight(node.param1,
+		supply = function(dtime, pos, _, net)
+			-- Take param1 from the node above because the solar panel doesn't
+			-- propagate sunlight (thus it's light value is 1 lower)
+			local sunlight = get_sunlight(
+				minetest.get_node{x=pos.x, y=pos.y+1, z=pos.z}.param1,
 				minetest.get_timeofday())
 
 			-- produce power only if sufficient light
@@ -76,7 +79,7 @@ end
 
 -- from light.h:119
 function get_sunlight(param1, tod)
-	local sunlight_factor = time_to_daynight_ratio(tod)
-	local sunlight = param1 % 16
-	return math.min(math.floor(sunlight_factor * sunlight / 1000), 15)
+	local sun_factor = time_to_daynight_ratio(tod)
+	local daylight = param1 % 16
+	return math.min(math.floor(sun_factor * daylight / 1000), 15)
 end
