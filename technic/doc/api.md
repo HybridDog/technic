@@ -200,6 +200,9 @@ down. We have a brown-out situation.
 
 Hence for now all the power distribution logic resides in this single node.
 
+If the switching station is powered by mesecons, it sends the supply and demand
+values of the network via digiline.
+
 #### Node meta usage
 Machines connected to the network will have one or more of these fields in meta
 data:
