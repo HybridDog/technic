@@ -154,8 +154,8 @@ Legacy
 
 ### Used itemdef fields
 * `technic_run(pos, node, run_stage)`
-	* This function is currently used to update the node.
-	  Modders have to manually change the information about supply
+	* This function was used to update the node.
+	  Modders had to manually change the information about supply
 	  etc. (see below) in the node metadata.
 	* run_stage is technic.producer, technic.receiver or technic.battery.
 * `technic_on_disable(pos, node)`
