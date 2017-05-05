@@ -2,12 +2,7 @@
 ------------------------- Cache etc. stuff -------------------------------------
 
 local function force_get_node(pos)
-	local node = minetest.get_node_or_nil(pos)
-	if node then
-		return node
-	end
-	VoxelManip():read_from_map(pos, pos)
-	return minetest.get_node(pos)
+	return technic.get_or_load_node(pos) or minetest.get_node(pos)
 end
 
 local poshash = minetest.hash_node_position
@@ -167,9 +162,11 @@ function technic.network.init(startpos, gametime)
 	return {
 		startpos = startpos,
 		power_disposable = 0,
+		power_batteries = 0,
 		power_requested = 0,
 		poll_interval = 72,  -- 1 second with default time speed
 		current_gametime = gametime or minetest.get_gametime(),
+		counts = {},
 	}
 end
 
@@ -186,18 +183,39 @@ local function on_switching_update(pos)
 	meta:set_int("technic_next_polling", least_gametime + net.poll_interval)
 end
 
+-- used to find the battery box count for even power distribution
+local function count_nodes_remaining(net, nodename)
+	if net.counts[nodename] then
+		net.counts[nodename] = net.counts[nodename]-1
+		return net.counts[nodename]
+	end
+	local cnt = 0
+	for i = 1,#net.machines do
+		if net.machines[i].node.name == nodename then
+			cnt = cnt+1
+		end
+	end
+	net.counts[nodename] = cnt
+	return cnt
+end
+
 
 ------------------------- node registering -------------------------------------
 
 local prios = {
 	producer = 1,
 	consumer_wait = 25,
+	batbox_offer = 50,
+	batbox_take = 53,
 	consumer_eat = 100,
+	batbox_eat = 125,
 }
 
 local idleinfo = S" (Idle)"
+local outofpower = S" (Energy, I need it)"
 local prodinfo = S" (Producing %s EU/s)"
 local consinfo = S" (Using %s EU/s)"
+local batinfo = S" (Balance: %s EU/s)"
 
 local register_node = minetest.register_node
 function minetest.register_node(name, def)
@@ -205,13 +223,14 @@ function minetest.register_node(name, def)
 		return register_node(name, def)
 	end
 	local tech = def.technic
-	if tech.supply then
+	if tech.produce then
+		-- Producer
 		tech.machine = true
 		tech.priorities = tech.priorities or {prios.producer}
 		function tech.on_poll(net)
 			-- Get the produced power, add it to the network and update infotext
 			local machine = net.machine
-			local power = tech.supply(machine.dtime, machine.pos, machine.node,
+			local power = tech.produce(machine.dtime, machine.pos, machine.node,
 				net)
 			local meta = minetest.get_meta(machine.pos)
 			if power > 0 then
@@ -224,6 +243,7 @@ function minetest.register_node(name, def)
 			end
 		end
 	elseif tech.consume then
+		-- Consumer
 		tech.machine = true
 		tech.priorities = {prios.consumer_wait, prios.consumer_eat}
 		function tech.on_poll(net)
@@ -238,9 +258,11 @@ function minetest.register_node(name, def)
 				return
 			end
 			-- Use the power
-			local available_power = net.power_disposable + net.power_batteries
+			local available_power = net.power_disposable
 			if machine.requested_power < available_power then
 				-- not enough power
+				meta:set_string("infotext", tech.machine_description ..
+					outofpower)
 				return
 			end
 			local power = tech.consume(machine.old_dtime, available_power,
@@ -248,12 +270,7 @@ function minetest.register_node(name, def)
 			local meta = minetest.get_meta(machine.pos)
 			if power > 0 then
 				net.power_disposable = net.power_disposable - power
-				if net.power_disposable < 0 then
-					-- use battery power
-					net.power_batteries = net.power_batteries
-						+ net.power_disposable
-					net.power_disposable = 0
-				end
+				assert(net.power_disposable >= 0, "too many power taken")
 				meta:set_string("infotext", tech.machine_description ..
 					consinfo:format(technic.pretty_num(power * dtime)))
 			else
@@ -261,5 +278,55 @@ function minetest.register_node(name, def)
 					idleinfo)
 			end
 		end
+	elseif tech.offer_power then
+		-- Battery Box
+		tech.machine = true
+		tech.priorities = {prios.batbox_offer, prios.batbox_take,
+			prios.batbox_eat}
+		function tech.on_poll(net)
+			local machine = net.machine
+			if net.current_priority == prios.batbox_offer then
+				machine.offered_power = 0
+				machine.old_dtime = machine.dtime
+				if net.power_requested > net.power_disposable then
+					-- find out how much power the machine can donate
+					local offered_power = tech.offer_power(machine.dtime,
+						machine.pos, machine.node, net)
+					--~ net.power_batteries_max = net.power_batteries_max
+						--~ + offered_power
+					machine.offered_power = offered_power
+				end
+				return
+			end
+			if net.current_priority == prios.batbox_take then
+				machine.donated_power = 0
+				local power_to_take = math.min(net.power_requested
+					- net.power_disposable, machine.offered_power)
+				if power_to_take > 0 then
+					-- take power from the battery box
+					-- todo take an evenly distributed amount of power from this machine
+					--~ local boxcnt = count_nodes_remaining(net, machine.node.name)
+
+					tech.give_power(power_to_take, machine.pos, machine.node,
+						net)
+					net.power_disposable = net.power_disposable + power_to_take
+					machine.donated_power = power_to_take
+				end
+				return
+			end
+			-- feed battery boxes with surplus
+			local taken_power = 0
+			if net.power_disposable > 0 then
+				taken_power = tech.take_surplus(machine.old_dtime,
+					net.power_disposable, machine.pos, machine.node, net)
+				net.power_disposable = net.power_disposable - taken_power
+			end
+			-- show information
+			local meta = minetest.get_meta(machine.pos)
+			meta:set_string("infotext", tech.machine_description ..
+				batinfo:format(technic.pretty_num(
+				(taken_power - donated_power) * dtime)))
+		end
 	end
+	register_node(name, def)
 end

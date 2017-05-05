@@ -95,26 +95,44 @@ Used itemdef fields
 		* This table contains the tiers the machine belongs to, e.g. `{"LV"}`
 	* `machine_description = ""`
 		* The machine description is currently used for setting the infotext.
-	* `supply = function(dtime, pos, node, net)`
-		* If supply is specified, `priorities` is set to `{1}`, `machine` is set
+	Producer:
+		* If produce is specified, `priorities` is set to `{1}`, `machine` is set
 		  to `true` and the `on_poll` function is set to call the supply
 		  function.
-		* The return value is the power the machine produced.
-		  The infotext is set according to this value.
-	* `consume = function(dtime, available_power, pos, node, net)`
+		* `produce = function(dtime, pos, node, net)`
+			* The return value is the power the machine produced.
+			  The infotext is set according to this value.
+	Consumer:
 		* If consume is specified, `priorities` is set to `{25, 100}`,
 		  `machine` is set to `true` and the `on_poll` function is set to call
 		  the `request_power` function and then `consume`.
-		* The return value is the power the machine consumed, it is positive and
-		  must not be bigger than available_power.
-		  The infotext is set according to this value.
-		* dtime is the same number as the one passed to `request_power`.
-		* `request_power` needs to be set for consume to work.
-	* `request_power = function(dtime, pos, node, net)`
-		* This function should return the power the machine needs.
-		* Knowing the power usage up front is necessary to control other
-		  machines such as supply converter.
-		* Make it return `0` if you really don't want to use it.
+		* `consume = function(dtime, available_power, pos, node, net)`
+			* The return value is the power the machine consumed, it is positive and
+			  must not be bigger than available_power.
+			  The infotext is set according to this value.
+			* dtime is the same number as the one passed to `request_power`.
+			* `request_power` needs to be set for consume to work.
+		* `request_power = function(dtime, pos, node, net)`
+			* This function should return the power the machine needs.
+			* Knowing the power usage up front is necessary to control other
+			  machines such as supply converter and battery box.
+			* Make it return `0` if you really don't want to use it.
+	Battery Box:
+		* If offer_power is specified, `priorities` is set to `{50, 53, 125}`,
+		  `machine` is set to `true` and the `on_poll` function is set to call
+		  the `offer_power`, `give_power` and then the `take_surplus` function.
+		* `offer_power = function(dtime, pos, node, net)`
+			* The return value is the maximum amount of power which can be taken
+			  from the battery box.
+			* It's only called if power from battery boxes is required.
+		* `give_power = function(power_to_take, pos, node, net)`
+			* In this function, power_to_take becomes removed from the battery
+			  box's storage.
+			* It's only called if power from battery boxes is required.
+		* `take_surplus = function(dtime, disposable_power, pos, node, net)`
+			* The return value is the power stored in the machine.
+			* disposable_power is the maximum amount of power which should be
+			  taken. (0 <= return_value <= disposable_power > 0)
 	* `machine = true`
 		* Set this boolean to true to use the node as machine.
 	* `priorities = {}`
