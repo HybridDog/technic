@@ -26,16 +26,28 @@ a table passed to `on_poll` and has following fields:
 			* Use it to calculate produced or consumed power
 		* `pos`
 		* `node`
-* `poll_interval = 72`
-	* The poll interval is the time delay until the machines are updated next
-	  again.
-	* The value is in gametime seconds.
 * `current_gametime`
 	* This number is the gametime of when the network polling began.
 * `startpos`
 	* The position of the first detected cable of the network
 * `machines`
 	* This is the table of machines connected to the network.
+* `poll_interval = 72`
+	* The poll interval is the time delay until the machines are updated next
+	  again.
+	* The value is in gametime seconds.
+* `produced_power`
+	* The aggregate power supplied by all producers
+	* result after polling
+* `consumed_power`
+	* The aggregate power taken by all consumers
+	* result after polling
+* `batteryboxes_drain`
+	* The aggregate drainage of battery boxes
+	* result after polling
+* `batteryboxes_fill`
+	* The aggregate filling of battery boxes
+	* result after polling
 You can - and should - change fields of this table if you need to.
 
 Helper functions

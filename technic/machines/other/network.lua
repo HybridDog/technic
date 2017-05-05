@@ -60,6 +60,7 @@ local touchps = {
 local touchnames = {right=1, left=2, back=3, front=4, top=5, bottom=6}
 local function scan_net(pos, tier)
 	local machines = {}
+	local pollers = {}
 	local founds_h = {} -- > 1 cable required
 	local todo = {pos}
 	local sp = 1
@@ -72,7 +73,7 @@ local function scan_net(pos, tier)
 			if not founds_h[h] then
 				local node = get_node(p)
 				if technic.is_tier_cable(node.name, tier) then
-					founds_h[h] = true
+					founds_h[h] = 1
 					sp = sp+1
 					todo[sp] = p
 				elseif is_machine(node.name, tier) then
@@ -88,23 +89,41 @@ local function scan_net(pos, tier)
 						end
 					end
 					if connected then
-						founds_h[h] = true
-						machines[#machines+1] = {
-							pos = pos,
-							node = node,
-							def = def
-						}
+						if def.technic.activates_network then
+							pollers[#pollers+1] = {
+								pos = pos,
+								node = node,
+								def = def
+							}
+							founds_h[h] = 3
+						else
+							founds_h[h] = 2
+							machines[#machines+1] = {
+								pos = pos,
+								node = node,
+								def = def
+							}
+						end
 					end
 				else
-					founds_h[h] = true
+					founds_h[h] = 0
 				end
 			end
 		end
 	end
-	return machines
+	return machines, pollers
 end
 
 technic.network = {}
+
+-- disables inactive machines
+function technic.network.disable_inactives(pos, tier)
+	local connecteds = {}
+	for i = 1,6 do
+		local p = vector.add(pos, touchps[i])
+		local machines, pollers = scan_net(pos, tier)
+	end
+end
 
 -- updates the network
 function technic.network.poll(net)
@@ -159,6 +178,7 @@ function technic.network.poll(net)
 		end
 	end
 	clean_cache()
+	return true
 end
 
 -- returns a network table
@@ -176,19 +196,6 @@ function technic.network.init(startpos, gametime)
 		batteryboxes_drain = 0,
 		batteryboxes_fill = 0,
 	}
-end
-
-local function on_switching_update(pos)
-	local meta = minetest.get_meta(pos)
-	local gametime = minetest.get_gametime()
-	local least_gametime = meta:get_int"technic_next_polling"
-	if gametime < least_gametime then
-		return
-	end
-	local net = technic.network.init(pos, gametime)
-	technic.poll_network(net)
-
-	meta:set_int("technic_next_polling", least_gametime + net.poll_interval)
 end
 
 -- used to find the battery box count for even power distribution
