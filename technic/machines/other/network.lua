@@ -145,6 +145,10 @@ function technic.network.poll(net)
 					local meta = minetest.get_meta(machine.pos)
 					local previous_gametime = meta:get_int
 						"technic_previous_poll"
+					if previous_gametime == 0 then
+						-- in case of first poll
+						previous_gametime = net.current_gametime
+					end
 					machine.dtime = net.current_gametime - previous_gametime
 					net.machine = machine
 					data.on_poll(net)
