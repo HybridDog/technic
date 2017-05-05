@@ -168,9 +168,13 @@ function technic.network.init(startpos, gametime)
 		power_disposable = 0,
 		power_batteries = 0,
 		power_requested = 0,
-		poll_interval = 72,  -- 1 second with default time speed
 		current_gametime = gametime or minetest.get_gametime(),
 		counts = {},
+		poll_interval = 72,  -- 1 second with default time speed
+		produced_power = 0,
+		consumed_power = 0,
+		batteryboxes_drain = 0,
+		batteryboxes_fill = 0,
 	}
 end
 
@@ -239,6 +243,7 @@ function minetest.register_node(name, def)
 			local meta = minetest.get_meta(machine.pos)
 			if power > 0 then
 				net.power_disposable = net.power_disposable + power
+				net.produced_power = net.power_disposable
 				meta:set_string("infotext", tech.machine_description ..
 					prodinfo:format(technic.pretty_num(power * dtime)))
 			else
@@ -274,6 +279,7 @@ function minetest.register_node(name, def)
 			local meta = minetest.get_meta(machine.pos)
 			if power > 0 then
 				net.power_disposable = net.power_disposable - power
+				net.consumed_power = net.consumed_power + power
 				assert(net.power_disposable >= 0, "too many power taken")
 				meta:set_string("infotext", tech.machine_description ..
 					consinfo:format(technic.pretty_num(power * dtime)))
@@ -313,6 +319,8 @@ function minetest.register_node(name, def)
 
 					tech.give_power(power_to_take, machine.pos, machine.node,
 						net)
+					net.batteryboxes_drain = net.batteryboxes_drain
+						+ power_to_take
 					net.power_disposable = net.power_disposable + power_to_take
 					machine.donated_power = power_to_take
 				end
@@ -324,6 +332,7 @@ function minetest.register_node(name, def)
 				taken_power = tech.take_surplus(machine.old_dtime,
 					net.power_disposable, machine.pos, machine.node, net)
 				net.power_disposable = net.power_disposable - taken_power
+				net.batteryboxes_fill = net.batteryboxes_fill + taken_power
 			end
 			-- show information
 			local meta = minetest.get_meta(machine.pos)
