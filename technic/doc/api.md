@@ -85,6 +85,11 @@ Helper functions
 	* Some configuration function
 * `technic.tube_inject_item(pos, start_pos, velocity, item)`
 	* Same as `pipeworks.tube_inject_item`
+* `technic.network.disable_inactives(pos, tier)`
+	* Used when cutting off a network (part) from a polling node, such as SS.
+* `technic.network.request_poll(pos, tier)`
+	* Makes switching station update the net also if the polling interval isn't
+	  exceeded yet.
 
 Registration functions
 ----------------------
@@ -145,6 +150,14 @@ Used itemdef fields
 			* The return value is the power stored in the machine.
 			* disposable_power is the maximum amount of power which should be
 			  taken. (0 <= return_value <= disposable_power > 0)
+	Switching Station:
+		* If activates_network is true, the node can poll the network.
+		* `activates_network = false`
+			* tells whether the node is a SS
+		* `do_poll = function(pos, machines)`
+			* This is called when the network needs to be polled explicitly,
+			  e.g. after adding a new cable.
+			* See also `technic.network.request_poll`
 	* `machine = true`
 		* Set this boolean to true to use the node as machine.
 	* `priorities = {}`

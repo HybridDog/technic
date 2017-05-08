@@ -23,29 +23,16 @@ local S = technic.getter
 -- Read configuration file
 dofile(modpath.."/config.lua")
 
--- Helper functions
 dofile(modpath.."/helpers.lua")
+dofile(modpath.."/network.lua")
 
--- Items
 dofile(modpath.."/items.lua")
-
--- Craft recipes for items
 dofile(modpath.."/crafts.lua")
-
--- Register functions
 dofile(modpath.."/register.lua")
-
--- Radiation
 dofile(modpath.."/radiation.lua")
-
--- Machines
-dofile(modpath.."/machines/init.lua")
-
--- Tools
-dofile(modpath.."/tools/init.lua")
-
--- Aliases for legacy node/item names
 dofile(modpath.."/legacy.lua")
+dofile(modpath.."/machines/init.lua")
+dofile(modpath.."/tools/init.lua")
 
 if minetest.settings:get_bool("log_mods") then
 	print(S("[Technic] Loaded in %f seconds"):format(os.clock() - load_start))

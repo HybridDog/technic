@@ -49,9 +49,10 @@ function technic.register_machine(tier, nodename, machine_type)
 
 	local def = minetest.registered_nodes[nodename]
 
-	tech = {
+	local tech = {
 		machine = true,
 		tiers = {tier},
+		machine_description = def.description,
 	}
 	if machine_type == technic.producer then
 		tech.priorities = {run_prio, 1}
@@ -62,7 +63,7 @@ function technic.register_machine(tier, nodename, machine_type)
 				machine.old_dtime = machine.dtime
 				return
 			end
-			local meta = minetest.get_meta(pos)
+			local meta = minetest.get_meta(machine.pos)
 			local power = meta:get_int(net.tier .. "_EU_supply")
 			power = power * math.max(machine.old_dtime, 1)
 			net.power_disposable = net.power_disposable + power
@@ -107,7 +108,7 @@ function technic.register_machine(tier, nodename, machine_type)
 		minetest.override_item(nodename, {technic = tech})
 		return
 	end
-	if machine.type == technic.battery then
+	if machine_type == technic.battery then
 		tech.machine = true
 		tech.priorities = {run_prio, 50, 53, 125}
 		function tech.on_poll(net)
@@ -149,20 +150,21 @@ function technic.register_machine(tier, nodename, machine_type)
 			local taken_power = 0
 			if net.power_disposable > 0 then
 				local meta = minetest.get_meta(machine.pos)
-				local power = math.min(meta:get_int(
+				taken_power = math.min(meta:get_int(
 					net.tier .. "_EU_demand"), net.power_disposable)
 				local oldpower = meta:get_int(net.tier .. "_EU_input")
-				meta:set_int(net.tier .. "_EU_input", oldpower + power)
-				net.power_disposable = net.power_disposable - power
-				net.batteryboxes_fill = net.batteryboxes_fill + power
+				meta:set_int(net.tier .. "_EU_input", oldpower + taken_power)
+				net.power_disposable = net.power_disposable - taken_power
+				net.batteryboxes_fill = net.batteryboxes_fill + taken_power
 			end
 			-- show information
 			local meta = minetest.get_meta(machine.pos)
 			meta:set_string("infotext", tech.machine_description ..
-				batinfo:format(technic.pretty_num(
-				(taken_power - donated_power) * machine.old_dtime)))
+				("BB %s"):format(technic.pretty_num(
+				taken_power * machine.old_dtime)))
 		end
 		minetest.override_item(nodename, {technic = tech})
 		return
 	end
+	error("unknown machine_type: " .. machine_type)
 end

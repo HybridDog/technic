@@ -26,16 +26,25 @@ minetest.register_node("technic:switching_station",{
 	sounds = default.node_sound_wood_defaults(),
 	on_construct = function(pos)
 		local meta = minetest.get_meta(pos)
-		meta:set_string("infotext", S("Switching Station"))
+		meta:set_string("infotext", S"Switching Station")
 		meta:set_string("channel", "switching_station" ..
 			minetest.pos_to_string(pos))
 		meta:set_string("formspec", "field[channel;Channel;${channel}]")
+		on_switching_update(pos)
 	end,
-	on_timer = on_switching_update,
+	on_timer = function(pos)
+		on_switching_update(pos)
+	end,
+	technic = {
+		activates_network = true,
+		do_poll = function(pos, machines)
+			on_switching_update(pos, machines)
+		end,
+	},
 	after_destruct = function(pos)
-		minetest.forceload_free_block(pos)
-		pos.y = pos.y - 1
-		minetest.forceload_free_block(pos)
+		pos.y = pos.y-1
+		local tier = technic.get_cable_tier(minetest.get_node(pos).name)
+		technic.network.disable_inactives(pos, tier)
 	end,
 	on_receive_fields = function(pos, _, fields, sender)
 		if not fields.channel then
@@ -76,7 +85,8 @@ minetest.register_node("technic:switching_station",{
 -----------------------------------------------
 
 -- called for the switching station updates
-function on_switching_update(pos)
+function on_switching_update(pos, machines)
+print(dump(pos))
 	local nodetimer = minetest.get_node_timer(pos)
 	local meta = minetest.get_meta(pos)
 	local gametime = minetest.get_gametime()
@@ -86,16 +96,18 @@ function on_switching_update(pos)
 		least_gametime = gametime
 	end
 	local time_speed = minetest.setting_get"time_speed"
-	if gametime < least_gametime then
+	if gametime < least_gametime
+	and not machines then
 		-- timer attacked too early
 		nodetimer:start((gametime - least_gametime) / time_speed)
 		return
 	end
-	local net = technic.network.init(pos, gametime)
-	if technic.poll_network(net) then
+	local net = technic.network.init({x=pos.x, y=pos.y-1, z=pos.z}, gametime)
+	net.machines = machines
+	if technic.network.poll(net) then
 		meta:set_string("infotext", -- todo time, batteryboxdrain/fill
-			S("@1. Supply: @2 Demand: @3",
-			machine_name, technic.pretty_num(net.produced_power),
+			S"%s. Supply: %s Demand: %s":format(
+			"SS", technic.pretty_num(net.produced_power),
 			technic.pretty_num(net.consumed_power)))
 	else
 		meta:set_string("infotext", S"Couldn't get network")
@@ -105,8 +117,6 @@ function on_switching_update(pos)
 	meta:set_int("technic_next_polling", next_gametime)
 	nodetimer:start(next_gametime / time_speed)
 end
-
-					meta:set_string("infotext", S("%s Has No Network"):format(nodedef.description))
 
 --Re-enable disabled switching station if necessary
 minetest.register_abm({

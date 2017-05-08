@@ -1,6 +1,8 @@
 
 ------------------------- Cache etc. stuff -------------------------------------
 
+local S = technic.getter
+
 local function force_get_node(pos)
 	return technic.get_or_load_node(pos) or minetest.get_node(pos)
 end
@@ -50,15 +52,23 @@ local function is_machine(name, tier)
 	return false
 end
 
+-- tests whether the node is a switching station
+local function is_poller(name)
+	local def = minetest.registered_nodes[name]
+	return def.technic
+		and def.technic.acivated_network
+end
+
 -- walks the cable and finds the machines
 local touchps = {
 	{x=1, y=0, z=0}, {x=-1, y=0, z=0},
 	{x=0, y=0, z=1}, {x=0, y=0, z=-1},
 	{x=0, y=1, z=0}, {x=0, y=-1, z=0}
 }
--- touchnames needs test
-local touchnames = {right=1, left=2, back=3, front=4, top=5, bottom=6}
+-- needs test
+local touchnames_inv = {right=2, left=1, back=4, front=2, top=6, bottom=5}
 local function scan_net(pos, tier)
+print"scan"
 	local machines = {}
 	local pollers = {}
 	local founds_h = {} -- > 1 cable required
@@ -76,37 +86,43 @@ local function scan_net(pos, tier)
 					founds_h[h] = 1
 					sp = sp+1
 					todo[sp] = p
-				elseif is_machine(node.name, tier) then
-					local def = minetest.registered_nodes[node.name]
-					local connect_sides = def.connect_sides
-					local connected = not connect_sides
-					if not connected then
-						for i = 1,#connect_sides do
-							if touchnames[connect_sides[i]] == oi then
-								connected = true
-								break
+				else
+					local machin = is_machine(node.name, tier)
+					local SS = is_poller(node.name)
+					if machin
+					or SS then
+						local def = minetest.registered_nodes[node.name]
+						local connect_sides = def.connect_sides
+						local connected = not connect_sides
+						if not connected then
+							for i = 1,#connect_sides do
+								if touchnames_inv[connect_sides[i]] == oi then
+									connected = true
+									break
+								end
 							end
 						end
-					end
-					if connected then
-						if def.technic.activates_network then
-							pollers[#pollers+1] = {
-								pos = pos,
-								node = node,
-								def = def
-							}
-							founds_h[h] = 3
-						else
-							founds_h[h] = 2
-							machines[#machines+1] = {
-								pos = pos,
-								node = node,
-								def = def
-							}
+						if connected then
+							if SS then
+								-- some switching station
+								pollers[#pollers+1] = {
+									pos = p,
+									node = node,
+									def = def
+								}
+								founds_h[h] = 3
+							else
+								founds_h[h] = 2
+								machines[#machines+1] = {
+									pos = p,
+									node = node,
+									def = def
+								}
+							end
 						end
+					else
+						founds_h[h] = 0
 					end
-				else
-					founds_h[h] = 0
 				end
 			end
 		end
@@ -116,12 +132,32 @@ end
 
 technic.network = {}
 
--- disables inactive machines
+-- disables machines, e.g. after digging a cable
 function technic.network.disable_inactives(pos, tier)
-	local connecteds = {}
 	for i = 1,6 do
 		local p = vector.add(pos, touchps[i])
-		local machines, pollers = scan_net(pos, tier)
+		local machines, pollers = scan_net(p, tier)
+		if not next(pollers) then
+			-- disable machines if some are enabled
+			for i = 1,#machines do
+				local machine = machines[i]
+				local meta = minetest.get_meta(machine.pos)
+				if meta:get_int"technic_previous_poll" == 0 then
+					-- one disabled machine means all are disabled
+					break
+				end
+				meta:set_int("technic_previous_poll", 0)
+				meta:set_string("infotext", S"No network")
+			end
+		end
+	end
+end
+
+-- updates the net e.g. when connecting it with another one
+function technic.network.request_poll(pos, tier)
+	local machines, pollers = scan_net(pos, tier)
+	for i = 1,#pollers do
+		pollers[i].def.technic.do_poll(pollers[i].pos, machines)
 	end
 end
 
@@ -132,25 +168,27 @@ function technic.network.poll(net)
 	if not tier then
 		return false
 	end
-	local machines = scan_net(pos, tier)
+	if not net.machines then
+		net.machines = scan_net(pos, tier)
+	end
+	local machines = net.machines
 	net.tier = tier
-	net.machines = machines
-	net.current_priority = math.huge
+	net.current_priority = -1
 	while true do
-		-- find the next smaller priority
-		local next_priority = -1
+		-- find the next bigger priority
+		local next_priority = math.huge
 		for i = 1,#machines do
 			local data = machines[i].def.technic
 			for i = 1,#data.priorities do
 				local prio = data.priorities[i]
-				if prio < net.current_priority
-				and prio > next_priority then
+				if prio > net.current_priority
+				and prio < next_priority then
 					next_priority = prio
 				end
 			end
 		end
 		-- abort after finding the smallest priority
-		if next_priority < 0 then
+		if next_priority == math.huge then
 			break
 		end
 		net.current_priority = next_priority
