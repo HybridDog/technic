@@ -86,7 +86,7 @@ minetest.register_node("technic:switching_station",{
 
 -- called for the switching station updates
 function on_switching_update(pos, machines)
-print(dump(pos))
+print"SS polls"
 	local nodetimer = minetest.get_node_timer(pos)
 	local meta = minetest.get_meta(pos)
 	local gametime = minetest.get_gametime()
@@ -100,7 +100,7 @@ print(dump(pos))
 	and not machines then
 		-- timer attacked too early
 		nodetimer:start((gametime - least_gametime) / time_speed)
-		return
+		return true
 	end
 	local net = technic.network.init({x=pos.x, y=pos.y-1, z=pos.z}, gametime)
 	net.machines = machines
@@ -115,19 +115,20 @@ print(dump(pos))
 	--~ local next_gametime = least_gametime + net.poll_interval
 	local next_gametime = gametime + net.poll_interval
 	meta:set_int("technic_next_polling", next_gametime)
-	nodetimer:start(next_gametime / time_speed)
+	nodetimer:start(net.poll_interval / time_speed)
+	return true
 end
 
 --Re-enable disabled switching station if necessary
 minetest.register_abm({
 	label = "Machines: re-enable check",
 	nodenames = {"technic:switching_station"},
-	interval = 10,
+	interval = 1,
 	chance = 1,
 	catch_up = false,
 	action = function(pos)
-		if not minetest.get_node_timer(pos):is_started() then
+		--~ if not minetest.get_node_timer(pos):is_started() then
 			on_switching_update(pos)
-		end
+		--~ end
 	end,
 })

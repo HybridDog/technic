@@ -67,6 +67,7 @@ function technic.register_machine(tier, nodename, machine_type)
 			local power = meta:get_int(net.tier .. "_EU_supply")
 			power = power * math.max(machine.old_dtime, 1)
 			net.power_disposable = net.power_disposable + power
+			net.produced_power = net.power_disposable
 			net.poll_interval = math.min(net.poll_interval, 72)
 		end
 		minetest.override_item(nodename, {technic = tech})
@@ -74,13 +75,9 @@ function technic.register_machine(tier, nodename, machine_type)
 	end
 	if machine_type == technic.receiver then
 		tech.machine = true
-		tech.priorities = {run_prio, 25, 100}
+		tech.priorities = {25, 100}
 		function tech.on_poll(net)
 			local machine = net.machine
-			if net.current_priority == run_prio then
-				def.technic_run(machine.pos, machine.node, stage)
-				return
-			end
 			if net.current_priority == prios.consumer_wait then
 				local requested_power = minetest.get_meta(machine.pos):get_int(
 					net.tier .. "_EU_demand")
@@ -88,22 +85,19 @@ function technic.register_machine(tier, nodename, machine_type)
 				net.power_requested = net.power_requested + requested_power
 				return
 			end
-			-- Use the power
-			if machine.requested_power < net.power_disposable then
-				-- not enough power
+			local power = machine.requested_power
+			local meta = minetest.get_meta(machine.pos)
+			if power < 0 then
+				meta:set_string("infotext", "no power requested")
 				return
 			end
-			local power = minetest.get_meta(machine.pos):get_int(net.tier ..
-				"_EU_demand")
-			if power > 0 then
-				net.power_disposable = net.power_disposable - power
-				if net.power_disposable < 0 then
-					-- use battery power
-					net.power_batteries = net.power_batteries
-						+ net.power_disposable
-					net.power_disposable = 0
-				end
+			if power > net.power_disposable then
+				meta:set_string("infotext", "not enough power")
+				return
 			end
+			def.technic_run(machine.pos, machine.node, stage)
+			net.power_disposable = net.power_disposable - power
+			net.consumed_power = net.consumed_power + power
 		end
 		minetest.override_item(nodename, {technic = tech})
 		return

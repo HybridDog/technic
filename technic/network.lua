@@ -134,6 +134,7 @@ technic.network = {}
 
 -- disables machines, e.g. after digging a cable
 function technic.network.disable_inactives(pos, tier)
+print"inactives search (6x scan)"
 	for i = 1,6 do
 		local p = vector.add(pos, touchps[i])
 		local machines, pollers = scan_net(p, tier)
@@ -151,10 +152,12 @@ function technic.network.disable_inactives(pos, tier)
 			end
 		end
 	end
+print"inactives search done"
 end
 
 -- updates the net e.g. when connecting it with another one
 function technic.network.request_poll(pos, tier)
+print"polling requested, 1x scan"
 	local machines, pollers = scan_net(pos, tier)
 	for i = 1,#pollers do
 		pollers[i].def.technic.do_poll(pollers[i].pos, machines)
@@ -163,6 +166,7 @@ end
 
 -- updates the network
 function technic.network.poll(net)
+print"bare poll"
 	local pos = net.startpos
 	local tier = technic.get_cable_tier(get_node(pos).name)
 	if not tier then
