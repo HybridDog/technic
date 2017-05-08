@@ -274,14 +274,13 @@ function minetest.register_node(name, def)
 				return
 			end
 			-- Use the power
-			local available_power = net.power_disposable
-			if machine.requested_power < available_power then
+			if machine.requested_power < net.power_disposable then
 				-- not enough power
 				meta:set_string("infotext", tech.machine_description ..
 					outofpower)
 				return
 			end
-			local power = tech.consume(machine.old_dtime, available_power,
+			local power = tech.consume(machine.old_dtime, net.power_disposable,
 				machine.pos, machine.node, net)
 			local meta = minetest.get_meta(machine.pos)
 			if power > 0 then
