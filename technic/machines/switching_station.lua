@@ -123,12 +123,12 @@ end
 minetest.register_abm({
 	label = "Machines: re-enable check",
 	nodenames = {"technic:switching_station"},
-	interval = 1,
+	interval = 10,
 	chance = 1,
 	catch_up = false,
 	action = function(pos)
-		--~ if not minetest.get_node_timer(pos):is_started() then
+		if not minetest.get_node_timer(pos):is_started() then
 			on_switching_update(pos)
-		--~ end
+		end
 	end,
 })

@@ -56,7 +56,7 @@ end
 local function is_poller(name)
 	local def = minetest.registered_nodes[name]
 	return def.technic
-		and def.technic.acivated_network
+		and def.technic.acivates_network
 end
 
 -- walks the cable and finds the machines
