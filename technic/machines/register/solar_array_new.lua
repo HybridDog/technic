@@ -1,4 +1,4 @@
-
+error"unused"
 local S = technic.getter
 
 local get_sunlight

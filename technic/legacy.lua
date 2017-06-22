@@ -49,6 +49,13 @@ function technic.register_machine(tier, nodename, machine_type)
 
 	local def = minetest.registered_nodes[nodename]
 
+	local old_after_place = def.after_place_node or function()end
+	def.after_place_node = function(pos, placer, itemstack, pt)
+		local rv = old_after_place(pos, placer, itemstack, pt)
+		technic.network.request_poll(pt.under, tier)
+		return rv
+	end
+
 	local tech = {
 		machine = true,
 		tiers = {tier},

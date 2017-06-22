@@ -95,11 +95,11 @@ print"SS polls"
 		-- first poll
 		least_gametime = gametime
 	end
-	local time_speed = minetest.setting_get"time_speed"
+	local time_speed = minetest.settings:get"time_speed"
 	if gametime < least_gametime
 	and not machines then
 		-- timer attacked too early
-		nodetimer:start((gametime - least_gametime) / time_speed)
+		nodetimer:start((least_gametime - gametime) / time_speed)
 		return true
 	end
 	local net = technic.network.init({x=pos.x, y=pos.y-1, z=pos.z}, gametime)
@@ -116,6 +116,7 @@ print"SS polls"
 	local next_gametime = gametime + net.poll_interval
 	meta:set_int("technic_next_polling", next_gametime)
 	nodetimer:start(net.poll_interval / time_speed)
+	print(dump(net))
 	return true
 end
 

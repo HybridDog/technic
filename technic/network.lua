@@ -241,20 +241,20 @@ function technic.network.init(startpos, gametime)
 end
 
 -- used to find the battery box count for even power distribution
-local function count_nodes_remaining(net, nodename)
-	if net.counts[nodename] then
-		net.counts[nodename] = net.counts[nodename]-1
-		return net.counts[nodename]
-	end
-	local cnt = 0
-	for i = 1,#net.machines do
-		if net.machines[i].node.name == nodename then
-			cnt = cnt+1
-		end
-	end
-	net.counts[nodename] = cnt
-	return cnt
-end
+--~ local function count_nodes_remaining(net, nodename)
+	--~ if net.counts[nodename] then
+		--~ net.counts[nodename] = net.counts[nodename]-1
+		--~ return net.counts[nodename]
+	--~ end
+	--~ local cnt = 0
+	--~ for i = 1,#net.machines do
+		--~ if net.machines[i].node.name == nodename then
+			--~ cnt = cnt+1
+		--~ end
+	--~ end
+	--~ net.counts[nodename] = cnt
+	--~ return cnt
+--~ end
 
 
 ------------------------- node registering -------------------------------------
@@ -387,6 +387,14 @@ function minetest.register_node(name, def)
 			meta:set_string("infotext", tech.machine_description ..
 				batinfo:format(technic.pretty_num(
 				(taken_power - donated_power) * dtime)))
+		end
+	end
+	if def.after_place_node then
+		error"need override"
+	end
+	def.after_place_node = function(_,_,_, pt)
+		for i = 1,#def.technic.tiers do
+			technic.network.request_poll(pt.under, def.technic.tiers[i])
 		end
 	end
 	register_node(name, def)
