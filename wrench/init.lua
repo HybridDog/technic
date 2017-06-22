@@ -61,22 +61,22 @@ local function restore(pos, placer, itemstack)
 	return itemstack
 end
 
-for name, info in pairs(wrench.registered_nodes) do
-	local olddef = minetest.registered_nodes[name]
-	if olddef then
-		local newdef = {}
-		for key, value in pairs(olddef) do
-			newdef[key] = value
-		end
-		newdef.stack_max = 1
-		newdef.description = S("%s with items"):format(newdef.description)
-		newdef.groups = {}
-		newdef.groups.not_in_creative_inventory = 1
-		newdef.on_construct = nil
-		newdef.on_destruct = nil
-		newdef.after_place_node = restore
-		minetest.register_node(":"..get_pickup_name(name), newdef)
+local to_copy = {"tiles", "use_texture_alpha", "post_effect_color",
+	"is_ground_content", "walkable", "pointable", "diggable", "climbable",
+	"buildable_to", "light_source", "damage_per_second", "sounds",
+	"sunlight_propagates"}
+for name in pairs(wrench.registered_nodes) do
+	local origdef = minetest.registered_nodes[name]
+	assert(origdef, "unknown node: " .. name)
+	local newdef = {}
+	for i = 1,#to_copy do
+		newdef[to_copy[i]] = rawget(origdef, to_copy[i])
 	end
+	newdef.stack_max = 1
+	newdef.description = S("%s with items"):format(origdef.description)
+	newdef.groups = {not_in_creative_inventory = 1}
+	newdef.after_place_node = restore
+	minetest.register_node(":"..get_pickup_name(name), newdef)
 end
 
 minetest.register_tool("wrench:wrench", {
