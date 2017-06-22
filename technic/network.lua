@@ -56,7 +56,7 @@ end
 local function is_poller(name)
 	local def = minetest.registered_nodes[name]
 	return def.technic
-		and def.technic.acivates_network
+		and def.technic.activates_network
 end
 
 -- walks the cable and finds the machines
@@ -389,12 +389,15 @@ function minetest.register_node(name, def)
 				(taken_power - donated_power) * dtime)))
 		end
 	end
-	if def.after_place_node then
-		error"need override"
-	end
-	def.after_place_node = function(_,_,_, pt)
-		for i = 1,#def.technic.tiers do
-			technic.network.request_poll(pt.under, def.technic.tiers[i])
+	if tech.machine then
+		-- poll the network after placing the machine
+		if def.after_place_node then
+			error"need override"
+		end
+		def.after_place_node = function(_,_,_, pt)
+			for i = 1,#tech.tiers do
+				technic.network.request_poll(pt.under, tech.tiers[i])
+			end
 		end
 	end
 	register_node(name, def)

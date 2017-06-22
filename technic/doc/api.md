@@ -160,6 +160,7 @@ Used itemdef fields
 			* See also `technic.network.request_poll`
 	* `machine = true`
 		* Set this boolean to true to use the node as machine.
+		* The switching station doesn't have this set to true.
 	* `priorities = {}`
 		* In this table, set the priorities (number values) of the machine.
 		* The smaller a priority is, the earlier `on_poll` is executed, so e.g.

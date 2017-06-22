@@ -116,7 +116,7 @@ print"SS polls"
 	local next_gametime = gametime + net.poll_interval
 	meta:set_int("technic_next_polling", next_gametime)
 	nodetimer:start(net.poll_interval / time_speed)
-	print(dump(net))
+	print("Polled, now interval: " .. net.poll_interval)
 	return true
 end
 

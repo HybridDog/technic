@@ -50,7 +50,7 @@ function technic.register_machine(tier, nodename, machine_type)
 	local def = minetest.registered_nodes[nodename]
 
 	local old_after_place = def.after_place_node or function()end
-	def.after_place_node = function(pos, placer, itemstack, pt)
+	local function after_place(pos, placer, itemstack, pt)
 		local rv = old_after_place(pos, placer, itemstack, pt)
 		technic.network.request_poll(pt.under, tier)
 		return rv
@@ -61,6 +61,7 @@ function technic.register_machine(tier, nodename, machine_type)
 		tiers = {tier},
 		machine_description = def.description,
 	}
+	local def_to_add = {technic = tech, after_place_node = after_place}
 	if machine_type == technic.producer then
 		tech.priorities = {run_prio, 1}
 		tech.on_poll = function(net)
@@ -77,7 +78,7 @@ function technic.register_machine(tier, nodename, machine_type)
 			net.produced_power = net.power_disposable
 			net.poll_interval = math.min(net.poll_interval, 72)
 		end
-		minetest.override_item(nodename, {technic = tech})
+		minetest.override_item(nodename, def_to_add)
 		return
 	end
 	if machine_type == technic.receiver then
@@ -106,7 +107,7 @@ function technic.register_machine(tier, nodename, machine_type)
 			net.power_disposable = net.power_disposable - power
 			net.consumed_power = net.consumed_power + power
 		end
-		minetest.override_item(nodename, {technic = tech})
+		minetest.override_item(nodename, def_to_add)
 		return
 	end
 	if machine_type == technic.battery then
@@ -164,7 +165,7 @@ function technic.register_machine(tier, nodename, machine_type)
 				("BB %s"):format(technic.pretty_num(
 				taken_power * machine.old_dtime)))
 		end
-		minetest.override_item(nodename, {technic = tech})
+		minetest.override_item(nodename, def_to_add)
 		return
 	end
 	error("unknown machine_type: " .. machine_type)
