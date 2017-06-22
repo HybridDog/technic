@@ -86,7 +86,6 @@ minetest.register_node("technic:switching_station",{
 
 -- called for the switching station updates
 function on_switching_update(pos, machines)
-print"SS polls"
 	local nodetimer = minetest.get_node_timer(pos)
 	local meta = minetest.get_meta(pos)
 	local gametime = minetest.get_gametime()
@@ -95,11 +94,11 @@ print"SS polls"
 		-- first poll
 		least_gametime = gametime
 	end
-	local time_speed = minetest.settings:get"time_speed"
 	if gametime < least_gametime
 	and not machines then
 		-- timer attacked too early
-		nodetimer:start((least_gametime - gametime) / time_speed)
+		nodetimer:start(least_gametime - gametime)
+	minetest.chat_send_all("too early:  timeout: " .. nodetimer:get_timeout() .. "gt:" .. gametime)
 		return true
 	end
 	local net = technic.network.init({x=pos.x, y=pos.y-1, z=pos.z}, gametime)
@@ -113,10 +112,11 @@ print"SS polls"
 		meta:set_string("infotext", S"Couldn't get network")
 	end
 	--~ local next_gametime = least_gametime + net.poll_interval
-	local next_gametime = gametime + net.poll_interval
+	local time_speed = minetest.settings:get"time_speed"
+	local next_gametime = gametime + net.poll_interval / time_speed
 	meta:set_int("technic_next_polling", next_gametime)
 	nodetimer:start(net.poll_interval / time_speed)
-	print("Polled, now interval: " .. net.poll_interval)
+	minetest.chat_send_all("Polled, now interval: " .. net.poll_interval .. " timeout: " .. nodetimer:get_timeout())
 	return true
 end
 

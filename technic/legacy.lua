@@ -49,31 +49,44 @@ function technic.register_machine(tier, nodename, machine_type)
 
 	local def = minetest.registered_nodes[nodename]
 
+	-- update the network when placing a node (todo: sides)
 	local old_after_place = def.after_place_node or function()end
-	local function after_place(pos, placer, itemstack, pt)
-		local rv = old_after_place(pos, placer, itemstack, pt)
-		technic.network.request_poll(pt.under, tier)
-		return rv
-	end
+	local def_to_add = {
+		after_place_node = function (pos, placer, itemstack, pt)
+			local rv = old_after_place(pos, placer, itemstack, pt)
+			technic.network.request_poll(pt.under, tier)
+			return rv
+		end
+	}
 
 	local tech = {
 		machine = true,
 		tiers = {tier},
 		machine_description = def.description,
 	}
-	local def_to_add = {technic = tech, after_place_node = after_place}
+	def_to_add.technic = tech
+
+	-- call the technic_on_disable when the network was disabled
+	if def.technic_on_disable then
+		tech.disable = function(pos, node)
+			--~ machine.meta:set_int("HV_EU_input", 0)
+			def.technic_on_disable(pos, node)
+		end
+	end
+
 	if machine_type == technic.producer then
 		tech.priorities = {run_prio, 1}
 		tech.on_poll = function(net)
 			local machine = net.machine
 			if net.current_priority == run_prio then
-				def.technic_run(machine.pos, machine.node, stage)
+				def.technic_run(machine.pos, machine.node, net.tier)
 				machine.old_dtime = machine.dtime
 				return
 			end
 			local meta = minetest.get_meta(machine.pos)
 			local power = meta:get_int(net.tier .. "_EU_supply")
 			power = power * math.max(machine.old_dtime, 1)
+			power = power * machine.old_dtime
 			net.power_disposable = net.power_disposable + power
 			net.produced_power = net.power_disposable
 			net.poll_interval = math.min(net.poll_interval, 72)
@@ -86,24 +99,21 @@ function technic.register_machine(tier, nodename, machine_type)
 		tech.priorities = {25, 100}
 		function tech.on_poll(net)
 			local machine = net.machine
-			if net.current_priority == prios.consumer_wait then
+			if net.current_priority == 25 then
 				local requested_power = minetest.get_meta(machine.pos):get_int(
 					net.tier .. "_EU_demand")
-				machine.requested_power = requested_power
+				machine.requested_power = requested_power *
+					machine.dtime
 				net.power_requested = net.power_requested + requested_power
 				return
 			end
 			local power = machine.requested_power
-			local meta = minetest.get_meta(machine.pos)
-			if power < 0 then
-				meta:set_string("infotext", "no power requested")
-				return
+			if power < 0
+			or power > net.power_disposable then
+				power = 0
 			end
-			if power > net.power_disposable then
-				meta:set_string("infotext", "not enough power")
-				return
-			end
-			def.technic_run(machine.pos, machine.node, stage)
+			minetest.get_meta(machine.pos):set_int("HV_EU_input", power)
+			def.technic_run(machine.pos, machine.node, net.tier)
 			net.power_disposable = net.power_disposable - power
 			net.consumed_power = net.consumed_power + power
 		end
@@ -117,7 +127,7 @@ function technic.register_machine(tier, nodename, machine_type)
 			local machine = net.machine
 			if net.current_priority == run_prio then
 				machine.old_dtime = machine.dtime
-				def.technic_run(machine.pos, machine.node, stage)
+				def.technic_run(machine.pos, machine.node, net.tier)
 				return
 			end
 			if net.current_priority == 50 then

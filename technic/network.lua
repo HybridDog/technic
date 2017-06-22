@@ -68,7 +68,6 @@ local touchps = {
 -- needs test
 local touchnames_inv = {right=2, left=1, back=4, front=2, top=6, bottom=5}
 local function scan_net(pos, tier)
-print"scan"
 	local machines = {}
 	local pollers = {}
 	local founds_h = {} -- > 1 cable required
@@ -142,13 +141,18 @@ print"inactives search (6x scan)"
 			-- disable machines if some are enabled
 			for i = 1,#machines do
 				local machine = machines[i]
-				local meta = minetest.get_meta(machine.pos)
+				local pos = machine.pos
+				local meta = minetest.get_meta(pos)
 				if meta:get_int"technic_previous_poll" == 0 then
 					-- one disabled machine means all are disabled
 					break
 				end
 				meta:set_int("technic_previous_poll", 0)
 				meta:set_string("infotext", S"No network")
+				if machine.def.technic.disable then
+					machine.meta = meta
+					machine.def.technic.disable(pos, machine.node, machine)
+				end
 			end
 		end
 	end
@@ -166,7 +170,6 @@ end
 
 -- updates the network
 function technic.network.poll(net)
-print"bare poll"
 	local pos = net.startpos
 	local tier = technic.get_cable_tier(get_node(pos).name)
 	if not tier then

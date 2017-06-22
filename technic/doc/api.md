@@ -158,6 +158,9 @@ Used itemdef fields
 			* This is called when the network needs to be polled explicitly,
 			  e.g. after adding a new cable.
 			* See also `technic.network.request_poll`
+	* `disconnect = function(pos, node, machine)`
+		* If set, this is called when e.g. the SS became dug.
+		* machine.meta is the meta of the machine
 	* `machine = true`
 		* Set this boolean to true to use the node as machine.
 		* The switching station doesn't have this set to true.
