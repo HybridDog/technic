@@ -68,8 +68,8 @@ function technic.register_machine(tier, nodename, machine_type)
 
 	-- call the technic_on_disable when the network was disabled
 	if def.technic_on_disable then
-		tech.disable = function(pos, node)
-			--~ machine.meta:set_int("HV_EU_input", 0)
+		tech.disable = function(pos, node, machine)
+			machine.meta:set_int(machine.current_tier .. "_EU_timeout", 0)
 			def.technic_on_disable(pos, node)
 		end
 	end
@@ -141,39 +141,38 @@ function technic.register_machine(tier, nodename, machine_type)
 				return
 			end
 			if net.current_priority == 53 then
-				machine.donated_power = 0
+				machine.delta = 0
 				local power_to_take = math.min(net.power_requested
 					- net.power_disposable, machine.offered_power)
 				if power_to_take > 0 then
 					-- take power from the battery box
 					local meta = minetest.get_meta(machine.pos)
-					-- maybe wrong
-					local power = meta:get_int(net.tier .. "_EU_input")
-					meta:set_int(net.tier .. "_EU_input", power
+					local power = meta:get_int"internal_EU_charge"
+					meta:set_int("internal_EU_charge", power
 						- power_to_take)
 					net.batteryboxes_drain = net.batteryboxes_drain
 						+ power_to_take
 					net.power_disposable = net.power_disposable + power_to_take
-					machine.donated_power = power_to_take
+					machine.delta = -power_to_take
 				end
 				return
 			end
 			-- feed battery boxes with surplus
-			local taken_power = 0
 			if net.power_disposable > 0 then
 				local meta = minetest.get_meta(machine.pos)
-				taken_power = math.min(meta:get_int(
+				power_to_box = math.min(meta:get_int(
 					net.tier .. "_EU_demand"), net.power_disposable)
-				local oldpower = meta:get_int(net.tier .. "_EU_input")
-				meta:set_int(net.tier .. "_EU_input", oldpower + taken_power)
-				net.power_disposable = net.power_disposable - taken_power
-				net.batteryboxes_fill = net.batteryboxes_fill + taken_power
+				meta:set_int(net.tier .. "_EU_input", power_to_box)
+				net.power_disposable = net.power_disposable - power_to_box
+				net.batteryboxes_fill = net.batteryboxes_fill + power_to_box
+				machine.delta = machine.delta + power_to_box
 			end
 			-- show information
 			local meta = minetest.get_meta(machine.pos)
 			meta:set_string("infotext", tech.machine_description ..
-				("BB %s"):format(technic.pretty_num(
-				taken_power * machine.old_dtime)))
+				("\nstored: %s, loading: %s"):format(
+				technic.pretty_num(meta:get_int"internal_EU_charge"),
+				technic.pretty_num(machine.delta * machine.old_dtime)))
 		end
 		minetest.override_item(nodename, def_to_add)
 		return

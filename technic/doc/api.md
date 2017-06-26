@@ -161,6 +161,8 @@ Used itemdef fields
 	* `disconnect = function(pos, node, machine)`
 		* If set, this is called when e.g. the SS became dug.
 		* machine.meta is the meta of the machine
+		* machine.current_tier is the tier of the disconnected network
+		* These messy parameters are to be changed soon
 	* `machine = true`
 		* Set this boolean to true to use the node as machine.
 		* The switching station doesn't have this set to true.

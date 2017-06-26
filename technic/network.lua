@@ -150,7 +150,9 @@ print"inactives search (6x scan)"
 				meta:set_int("technic_previous_poll", 0)
 				meta:set_string("infotext", S"No network")
 				if machine.def.technic.disable then
+					-- TODO: machine shouldn't get these
 					machine.meta = meta
+					machine.current_tier = tier
 					machine.def.technic.disable(pos, machine.node, machine)
 				end
 			end
