@@ -316,7 +316,7 @@ function minetest.register_node(name, def)
 				net.power_disposable = net.power_disposable + power
 				net.produced_power = net.power_disposable
 				meta:set_string("infotext", tech.machine_description ..
-					prodinfo:format(technic.pretty_num(power * dtime)))
+					prodinfo:format(technic.EU_string(power * dtime)))
 			else
 				meta:set_string("infotext", tech.machine_description ..
 					idleinfo)
@@ -352,7 +352,7 @@ function minetest.register_node(name, def)
 				net.consumed_power = net.consumed_power + power
 				assert(net.power_disposable >= 0, "too many power taken")
 				meta:set_string("infotext", tech.machine_description ..
-					consinfo:format(technic.pretty_num(power * dtime)))
+					consinfo:format(technic.EU_string(power * dtime)))
 			else
 				meta:set_string("infotext", tech.machine_description ..
 					idleinfo)
@@ -407,7 +407,7 @@ function minetest.register_node(name, def)
 			-- show information
 			local meta = minetest.get_meta(machine.pos)
 			meta:set_string("infotext", tech.machine_description ..
-				batinfo:format(technic.pretty_num(
+				batinfo:format(technic.EU_string(
 				(taken_power - donated_power) * dtime)))
 		end
 	end

@@ -111,9 +111,11 @@ function on_switching_update(pos, machines)
 	net.machines = machines
 	if technic.network.poll(net) then
 		meta:set_string("infotext", -- todo time, batteryboxdrain/fill
-			S"%s. Supply: %s Demand: %s":format(
-			"SS", technic.pretty_num(net.produced_power),
-			technic.pretty_num(net.consumed_power)))
+			S"SS. Supply: %s, Demand: %s,\nBatbox Fill: %s, Dropped: %s":format(
+			technic.EU_string(net.produced_power),
+			technic.EU_string(net.consumed_power),
+			technic.EU_string(net.batteryboxes_fill),
+			technic.EU_string(net.power_disposable)))
 	else
 		meta:set_string("infotext", S"Couldn't get network")
 	end
@@ -121,7 +123,7 @@ function on_switching_update(pos, machines)
 	local delay = math.max(math.floor(net.poll_interval / net.time_speed), 1)
 	meta:set_int("technic_next_polling", gametime + delay)
 	nodetimer:start(delay)
-	minetest.chat_send_all("Polled, now interval: " .. net.poll_interval .. " timeout: " .. nodetimer:get_timeout())
+	--~ minetest.chat_send_all("Polled, now interval: " .. net.poll_interval .. " timeout: " .. nodetimer:get_timeout())
 	return true
 end
 

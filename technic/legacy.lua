@@ -99,23 +99,43 @@ function technic.register_machine(tier, nodename, machine_type)
 		tech.priorities = {25, 100}
 		function tech.on_poll(net)
 			local machine = net.machine
+			local meta = minetest.get_meta(machine.pos)
 			if net.current_priority == 25 then
+				local times = machine.dtime / 72 + (tonumber(
+					meta:get_string"technic_legacy_dtime_offset") or 0)
+				machine.times = math.floor(times)
+				meta:set_string("technic_legacy_dtime_offset",
+					times - machine.times)
 				local requested_power = minetest.get_meta(machine.pos):get_int(
 					net.tier .. "_EU_demand")
-				machine.requested_power = requested_power *
-					machine.dtime / 72
+				machine.requested_power = requested_power * machine.times
 				net.power_requested = net.power_requested + requested_power
 				return
 			end
 			local power = machine.requested_power
 			if power < 0
 			or power > net.power_disposable then
-				power = 0
+				-- can't power it
+				meta:set_int(net.tier .. "_EU_input", 0)
+				def.technic_run(machine.pos, machine.node, technic.receiver)
+				return
 			end
-			minetest.get_meta(machine.pos):set_int("HV_EU_input", power)
-			def.technic_run(machine.pos, machine.node, net.tier)
-			net.power_disposable = net.power_disposable - power
-			net.consumed_power = net.consumed_power + power
+			for _ = 1,machine.times do
+				-- catch up the executions
+				local requested_power = meta:get_int(net.tier .. "_EU_demand")
+				if net.power_disposable > requested_power then
+					meta:set_int(net.tier .. "_EU_input", net.power_disposable)
+					net.power_disposable = net.power_disposable
+						- requested_power
+					net.consumed_power = net.consumed_power + requested_power
+					def.technic_run(machine.pos, machine.node, technic.receiver)
+				else
+					-- out of power
+					meta:set_int(net.tier .. "_EU_input", 0)
+					def.technic_run(machine.pos, machine.node, technic.receiver)
+					break
+				end
+			end
 		end
 		minetest.override_item(nodename, def_to_add)
 		return
@@ -171,8 +191,8 @@ function technic.register_machine(tier, nodename, machine_type)
 			local meta = minetest.get_meta(machine.pos)
 			meta:set_string("infotext", tech.machine_description ..
 				("\nstored: %s, loading: %s"):format(
-				technic.pretty_num(meta:get_int"internal_EU_charge"),
-				technic.pretty_num(machine.delta * machine.old_dtime)))
+				technic.EU_string(meta:get_int"internal_EU_charge"),
+				technic.EU_string(machine.delta * machine.old_dtime)))
 		end
 		minetest.override_item(nodename, def_to_add)
 		return
