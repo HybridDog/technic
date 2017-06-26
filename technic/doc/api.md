@@ -162,20 +162,23 @@ Used itemdef fields
 			* This is called when the network needs to be polled explicitly,
 			  e.g. after adding a new cable.
 			* See also `technic.network.request_poll`
+	Custom:
+		* `on_poll = function(net)`
+			* Called when a network with this machine connected is updated.
+			* If multiple priorities are specified, the it becomes executed
+			  multiple times, e.g. for the battery box to take and give power.
+		* `priorities = {}`
+			* In this table, set the priorities (number values) of the machine.
+			* The smaller a priority is, the earlier `on_poll` is executed, so
+			  e.g. pruducers have a small value and consumers have a big one.
+		* `machine = true`
+			* Set this boolean to true to use the node as machine.
+			* The switching station doesn't have this set to true.
 	* `disconnect = function(pos, node, machine)`
 		* If set, this is called when e.g. the SS became dug.
 		* machine.meta is the meta of the machine
 		* machine.current_tier is the tier of the disconnected network
 		* These messy parameters are to be changed soon
-	* `machine = true`
-		* Set this boolean to true to use the node as machine.
-		* The switching station doesn't have this set to true.
-	* `priorities = {}`
-		* In this table, set the priorities (number values) of the machine.
-		* The smaller a priority is, the earlier `on_poll` is executed, so e.g.
-		  pruducers have a small value and consumers have a big one.
-		* If multiple priorities are specified, the on_poll becomes executed
-		  multiple times, e.g. for the battery box to take and give power.
 * `groups`:
 	* `technic_<ltier> = 1` ltier is a tier in small letters; this group makes
 	  the node connect to the cable(s) of the right tier.

@@ -251,14 +251,14 @@ end
 
 -- intializes a network table
 function technic.network.init(net)
-	net.power_disposable = 0
+	net.power_disposable = 0  -- the power which can be consumed
 	net.power_batteries = 0
 	net.power_requested = 0
 	net.counts = {}
 	net.poll_interval = 72  -- 1 second with default time speed
 	net.produced_power = 0
-	net.consumed_power = 0
-	net.batteryboxes_drain = 0
+	net.consumed_power = 0  -- this has been consumed up to now
+	net.batteryboxes_drain = 0  -- battery
 	net.batteryboxes_fill = 0
 end
 

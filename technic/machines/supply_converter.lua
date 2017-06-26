@@ -5,11 +5,18 @@
 -- It works like this:
 --   The top side is setup as the receiver side, the bottom as the producer side.
 --   Once the receiver side is powered it will deliver power to the other side.
---   Unused power is wasted just like any other producer!
 
 local digilines_path = minetest.get_modpath("digilines")
 
 local S = technic.getter
+
+local transfer_amount = 10000
+local transfer_efficiency = 0.9
+local transfer_per_second = {
+	LV = 5000 / 72,
+	MV = 8000 / 72,
+	HV = 12000 / 72
+}
 
 local cable_entry = "^technic_cable_connection_overlay.png"
 
@@ -109,53 +116,62 @@ local digiline_def = {
 	},
 }
 
-local run = function(pos, node, run_stage)
-	-- run only in producer stage.
-	if run_stage == technic.receiver then
+local function collect_power(net)
+	local pos = net.machine.pos
+	if technic.get_cable_tier(minetest.get_node
+			{x=pos.x, y=pos.y+1, z=pos.z}.name) ~= net.current_tier then
 		return
 	end
-
-	local remain = 0.9
-	-- Machine information
-	local machine_name  = S("Supply Converter")
-	local meta          = minetest.get_meta(pos)
-	local enabled       = meta:get_string("enabled")
-	if enabled == "" then
-		-- Backwards compatibility
-		minetest.registered_nodes["technic:supply_converter"].on_construct(pos)
-		enabled = true
-	else
-		enabled = enabled == "1"
-	end
-	enabled = enabled and (meta:get_int("mesecon_mode") == 0 or meta:get_int("mesecon_effect") ~= 0)
-	local demand = enabled and meta:get_int("power") or 0
-
-	local pos_up        = {x=pos.x, y=pos.y+1, z=pos.z}
-	local pos_down      = {x=pos.x, y=pos.y-1, z=pos.z}
-	local name_up       = minetest.get_node(pos_up).name
-	local name_down     = minetest.get_node(pos_down).name
-
-	local from = technic.get_cable_tier(name_up)
-	local to   = technic.get_cable_tier(name_down)
-
-	if from and to then
-		local input = meta:get_int(from.."_EU_input")
-		meta:set_int(from.."_EU_demand", demand)
-		meta:set_int(from.."_EU_supply", 0)
-		meta:set_int(to.."_EU_demand", 0)
-		meta:set_int(to.."_EU_supply", input * remain)
-		meta:set_string("infotext", S("@1 (@2 @3 -> @4 @5)", machine_name, technic.pretty_num(input), from, technic.pretty_num(input * remain), to))
-	else
-		meta:set_string("infotext", S("%s Has Bad Cabling"):format(machine_name))
-		if to then
-			meta:set_int(to.."_EU_supply", 0)
-		end
-		if from then
-			meta:set_int(from.."_EU_demand", 0)
-		end
+	-- collect the stored power only if there's abundance
+	local meta = net.machine.meta
+	local collected_power = tonumber(meta:get_string"collected_power") or 0
+	local collectable = math.min(net.power_disposable,
+		transfer_amount - collected_power)
+	if collectable == 0 then
+		-- the network needs the power itself or the SC is filled
 		return
 	end
+	-- take the power and request a soon update
+	meta:set_string("collected_power", collect_power + collectable)
+	net.power_disposable = net.power_disposable - collectable
+	net.poll_interval = math.min(net.poll_interval, 72)
+end
 
+local function donate_power(net)
+	local pos = net.machine.pos
+	local meta = net.machine.meta
+	if technic.get_cable_tier(minetest.get_node
+			{x=pos.x, y=pos.y-1, z=pos.z}.name) ~= net.current_tier then
+		meta:set_string("infotext",
+			S"%s has no Network":format"Supply Converter")
+		return
+	end
+	-- donate the stored power only if needed
+	local to_eject = (net.power_disposable - net.power_requested)
+		/ transfer_efficiency
+	if to_eject <= 0 then
+		meta:set_string("infotext", S"Target network has enough power")
+		return
+	end
+	local collected_power = tonumber(meta:get_string"collected_power") or 0
+	local will_eject = math.min(math.min(to_eject, collected_power),
+		transfer_per_second[net.current_tier])
+	if will_eject == 0 then
+		meta:set_string("infotext", S"No power collected")
+		return
+	end
+	-- donate the power and then request an interval to avoid overfilling the SC
+	meta:set_string("collected_power", collected_power - will_eject)
+	net.power_disposable = net.power_disposable
+		+ will_eject * transfer_efficiency
+	net.poll_interval = math.min(net.poll_interval, 72)
+	meta:set_string("infotext", S"%s -> %s: %s -> %s":format(
+		technic.get_cable_tier(minetest.get_node
+			{x=pos.x, y=pos.y+1, z=pos.z}.name),
+		net.current_tier,
+		technic.EU_string(will_eject),
+		technic.EU_string(will_eject * transfer_efficiency))
+	)
 end
 
 minetest.register_node("technic:supply_converter", {
@@ -179,28 +195,34 @@ minetest.register_node("technic:supply_converter", {
 		if digilines_path then
 			meta:set_string("channel", "supply_converter"..minetest.pos_to_string(pos))
 		end
-		meta:set_int("power", 10000)
-		meta:set_int("enabled", 1)
 		meta:set_int("mesecon_mode", 0)
 		meta:set_int("mesecon_effect", 0)
 		set_supply_converter_formspec(meta)
 	end,
+	technic = {
+		machine_description = "Supply Converter",
+		tiers = {"LV", "MV", "HV"},
+		priorities = {33, 200},
+		machine = true,
+		on_poll = function(net)
+			if net.current_priority == 33 then
+				donate_power(net)
+			else
+				collect_power(net)
+			end
+		end
+	},
 	mesecons = mesecons,
 	digiline = digiline_def,
-	technic_run = run,
-	technic_on_disable = run,
+	--~ technic_run = run,
+	--~ technic_on_disable = run,
 })
 
 minetest.register_craft({
-	output = 'technic:supply_converter 1',
+	output = "technic:supply_converter",
 	recipe = {
-		{'technic:fine_gold_wire', 'technic:rubber',         'technic:doped_silicon_wafer'},
-		{'technic:mv_transformer', 'technic:machine_casing', 'technic:lv_transformer'},
-		{'technic:mv_cable',       'technic:rubber',         'technic:lv_cable'},
+		{"technic:fine_gold_wire", "technic:rubber", "technic:doped_silicon_wafer"},
+		{"technic:mv_transformer", "technic:machine_casing", "technic:lv_transformer"},
+		{"technic:mv_cable",       "technic:rubber",         "technic:lv_cable"},
 	}
 })
-
-for tier, machines in pairs(technic.machines) do
-	technic.register_machine(tier, "technic:supply_converter", technic.producer_receiver)
-end
-
