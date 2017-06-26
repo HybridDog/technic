@@ -249,23 +249,17 @@ function technic.network.poll(net)
 	return true
 end
 
--- returns a network table
-function technic.network.init(startpos, gametime, ustime)
-	return {
-		startpos = startpos,
-		power_disposable = 0,
-		power_batteries = 0,
-		power_requested = 0,
-		current_gametime = gametime or minetest.get_gametime(),
-		current_ustime = ustime or minetest.get_us_time(),
-		time_speed = minetest.settings:get"time_speed",
-		counts = {},
-		poll_interval = 72,  -- 1 second with default time speed
-		produced_power = 0,
-		consumed_power = 0,
-		batteryboxes_drain = 0,
-		batteryboxes_fill = 0,
-	}
+-- intializes a network table
+function technic.network.init(net)
+	net.power_disposable = 0
+	net.power_batteries = 0
+	net.power_requested = 0
+	net.counts = {}
+	net.poll_interval = 72  -- 1 second with default time speed
+	net.produced_power = 0
+	net.consumed_power = 0
+	net.batteryboxes_drain = 0
+	net.batteryboxes_fill = 0
 end
 
 -- used to find the battery box count for even power distribution

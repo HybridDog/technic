@@ -23,6 +23,7 @@ a table passed to `on_poll` and has following fields:
 	  contains following fields:
 		* `dtime`
 			* The time difference from the previous access to the machine
+			  in minetest time seconds
 			* Use it to calculate produced or consumed power
 		* `pos`
 		* `node`
@@ -35,7 +36,7 @@ a table passed to `on_poll` and has following fields:
 * `poll_interval = 72`
 	* The poll interval is the time delay until the machines are updated next
 	  again.
-	* The value is in gametime seconds.
+	* The value is in minetest time seconds.
 * `produced_power`
 	* The aggregate power supplied by all producers
 	* result after polling

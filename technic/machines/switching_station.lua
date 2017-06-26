@@ -101,7 +101,13 @@ function on_switching_update(pos, machines)
 	minetest.chat_send_all("too early:  timeout: " .. nodetimer:get_timeout() .. "gt:" .. gametime)
 		return true
 	end
-	local net = technic.network.init({x=pos.x, y=pos.y-1, z=pos.z}, gametime)
+	local net = {
+		startpos = {x=pos.x, y=pos.y-1, z=pos.z},
+		current_gametime = minetest.get_gametime(),
+		current_ustime = minetest.get_us_time(),
+		time_speed = minetest.settings:get"time_speed",
+	}
+	technic.network.init(net)
 	net.machines = machines
 	if technic.network.poll(net) then
 		meta:set_string("infotext", -- todo time, batteryboxdrain/fill
@@ -111,12 +117,11 @@ function on_switching_update(pos, machines)
 	else
 		meta:set_string("infotext", S"Couldn't get network")
 	end
-	--~ local next_gametime = least_gametime + net.poll_interval
-	local time_speed = minetest.settings:get"time_speed"
-	local next_gametime = gametime + net.poll_interval / time_speed
-	meta:set_int("technic_next_polling", next_gametime)
-	nodetimer:start(net.poll_interval / time_speed)
-	--~ minetest.chat_send_all("Polled, now interval: " .. net.poll_interval .. " timeout: " .. nodetimer:get_timeout())
+	-- real second precision, thus at least 1s delay is required
+	local delay = math.max(math.floor(net.poll_interval / net.time_speed), 1)
+	meta:set_int("technic_next_polling", gametime + delay)
+	nodetimer:start(delay)
+	minetest.chat_send_all("Polled, now interval: " .. net.poll_interval .. " timeout: " .. nodetimer:get_timeout())
 	return true
 end
 
