@@ -170,6 +170,37 @@ print"polling requested, 1x scan"
 	end
 end
 
+-- returns the dtime for a machine
+local function touch_machine(meta, net)
+	local previous_time = meta:get_string"technic_previous_poll"
+	meta:set_string("technic_previous_poll", "")
+	local dtime = 0  -- in case of first poll
+	if previous_time ~= "" then
+		local sp = previous_time:find" "
+		local gametimediff = net.current_gametime
+			- tonumber(previous_time:sub(1, sp-1))
+		dtime = (net.current_ustime - tonumber(previous_time:sub(sp+1)))
+			/ 1000000
+		-- select gametime if ustime is not reliable,
+		-- e.g. after rejoining
+		if math.floor(dtime) ~= gametimediff then
+			dtime = gametimediff
+		end
+	end
+	meta:set_string("technic_previous_poll",
+		net.current_gametime .. " " .. net.current_ustime)
+	return dtime * net.time_speed
+end
+
+local function table_contains(t, v)
+	for i = 1,#t do
+		if t[i] == v then
+			return true
+		end
+	end
+	return false
+end
+
 -- updates the network
 function technic.network.poll(net)
 	local pos = net.startpos
@@ -183,6 +214,7 @@ function technic.network.poll(net)
 	local machines = net.machines
 	net.tier = tier
 	net.current_priority = -1
+	-- a heap could be used here
 	while true do
 		-- find the next bigger priority
 		local next_priority = math.huge
@@ -205,22 +237,11 @@ function technic.network.poll(net)
 		for i = 1,#machines do
 			local machine = machines[i]
 			local data = machine.def.technic
-			for i = 1,#data.priorities do
-				local prio = data.priorities[i]
-				if prio == net.current_priority then
-					local meta = minetest.get_meta(machine.pos)
-					local previous_gametime = meta:get_int
-						"technic_previous_poll"
-					if previous_gametime == 0 then
-						-- in case of first poll
-						previous_gametime = net.current_gametime
-					end
-					machine.dtime = net.current_gametime - previous_gametime
-					net.machine = machine
-					data.on_poll(net)
-					meta:set_int("technic_previous_poll", net.current_gametime)
-					break
-				end
+			if table_contains(data.priorities, net.current_priority) then
+				machine.meta = machine.meta or minetest.get_meta(machine.pos)
+				machine.dtime = touch_machine(machine.meta, net)
+				net.machine = machine
+				data.on_poll(net)
 			end
 		end
 	end
@@ -229,13 +250,15 @@ function technic.network.poll(net)
 end
 
 -- returns a network table
-function technic.network.init(startpos, gametime)
+function technic.network.init(startpos, gametime, ustime)
 	return {
 		startpos = startpos,
 		power_disposable = 0,
 		power_batteries = 0,
 		power_requested = 0,
 		current_gametime = gametime or minetest.get_gametime(),
+		current_ustime = ustime or minetest.get_us_time(),
+		time_speed = minetest.settings:get"time_speed",
 		counts = {},
 		poll_interval = 72,  -- 1 second with default time speed
 		produced_power = 0,

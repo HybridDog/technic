@@ -116,7 +116,7 @@ function on_switching_update(pos, machines)
 	local next_gametime = gametime + net.poll_interval / time_speed
 	meta:set_int("technic_next_polling", next_gametime)
 	nodetimer:start(net.poll_interval / time_speed)
-	minetest.chat_send_all("Polled, now interval: " .. net.poll_interval .. " timeout: " .. nodetimer:get_timeout())
+	--~ minetest.chat_send_all("Polled, now interval: " .. net.poll_interval .. " timeout: " .. nodetimer:get_timeout())
 	return true
 end
 

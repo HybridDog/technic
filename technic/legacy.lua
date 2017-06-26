@@ -80,7 +80,7 @@ function technic.register_machine(tier, nodename, machine_type)
 			local machine = net.machine
 			if net.current_priority == run_prio then
 				def.technic_run(machine.pos, machine.node, net.tier)
-				machine.old_dtime = machine.dtime
+				machine.old_dtime = machine.dtime / 72
 				return
 			end
 			local meta = minetest.get_meta(machine.pos)
@@ -103,7 +103,7 @@ function technic.register_machine(tier, nodename, machine_type)
 				local requested_power = minetest.get_meta(machine.pos):get_int(
 					net.tier .. "_EU_demand")
 				machine.requested_power = requested_power *
-					machine.dtime
+					machine.dtime / 72
 				net.power_requested = net.power_requested + requested_power
 				return
 			end
@@ -126,7 +126,7 @@ function technic.register_machine(tier, nodename, machine_type)
 		function tech.on_poll(net)
 			local machine = net.machine
 			if net.current_priority == run_prio then
-				machine.old_dtime = machine.dtime
+				machine.old_dtime = machine.dtime / 72
 				def.technic_run(machine.pos, machine.node, net.tier)
 				return
 			end
