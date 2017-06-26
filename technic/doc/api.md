@@ -27,6 +27,7 @@ a table passed to `on_poll` and has following fields:
 			* Use it to calculate produced or consumed power
 		* `pos`
 		* `node`
+		* `meta`
 * `current_gametime`
 	* This number is the gametime of when the network polling began.
 * `startpos`

@@ -79,7 +79,7 @@ function technic.register_machine(tier, nodename, machine_type)
 		tech.on_poll = function(net)
 			local machine = net.machine
 			if net.current_priority == run_prio then
-				def.technic_run(machine.pos, machine.node, net.tier)
+				def.technic_run(machine.pos, machine.node, technic.producer)
 				machine.old_dtime = machine.dtime / 72
 				return
 			end
@@ -147,7 +147,7 @@ function technic.register_machine(tier, nodename, machine_type)
 			local machine = net.machine
 			if net.current_priority == run_prio then
 				machine.old_dtime = machine.dtime / 72
-				def.technic_run(machine.pos, machine.node, net.tier)
+				def.technic_run(machine.pos, machine.node, technic.battery)
 				return
 			end
 			if net.current_priority == 50 then
@@ -197,5 +197,5 @@ function technic.register_machine(tier, nodename, machine_type)
 		minetest.override_item(nodename, def_to_add)
 		return
 	end
-	error("unknown machine_type: " .. machine_type)
+	error("unknown or unsupported legacy machine_type: " .. machine_type)
 end
