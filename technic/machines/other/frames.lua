@@ -6,22 +6,18 @@ frames = {}
 local infinite_stacks = minetest.settings:get_bool("creative_mode") and minetest.get_modpath("unified_inventory") == nil
 
 -- localize these functions from vector_extras with small names because they work fairly fast
-local get = vector.get_data_from_pos
-local set = vector.set_data_to_pos
-local remove = vector.remove_data_from_pos
-
 local frames_pos = {}
 
 local function get_frame(pos)
-	return get(frames_pos, pos.z,pos.y,pos.x)
+	return frames_pos[minetest.hash_node_position(pos)]
 end
 
 local function set_frame(pos, data)
-	return set(frames_pos, pos.z,pos.y,pos.x, data)
+	frames_pos[minetest.hash_node_position(pos)] = data
 end
 
 local function remove_frame(pos)
-	remove(frames_pos, pos.z,pos.y,pos.x)
+	frames_pos[minetest.hash_node_position(pos)] = nil
 end
 
 

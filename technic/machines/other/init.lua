@@ -6,8 +6,7 @@ dofile(path.."/constructor.lua")
 
 if technic.config:get_bool("enable_frames")
 and rawget(_G, "mesecon")
-and mesecon.register_mvps_unmov
-and vector.set_data_to_pos then
+and mesecon.register_mvps_unmov then
 	dofile(path.."/frames.lua")
 end
 
